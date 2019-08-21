@@ -20,7 +20,7 @@ $ cmake ..
 $ make -j
 ```
 If you encounter an error "fatal error: third_party/gpus/cuda/include/cuda_fp16.h: No such file or directory",
-open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit the line from \
+open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from \
 #include "third_party/gpus/cuda/include/cuda_fp16.h"
 to \
 #include "cuda_fp16.h" \
