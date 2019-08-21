@@ -31,8 +31,14 @@ to \
 #include "cuComplex.h" \
 #include "cuda.h"
 
-Then issue the make command again.
+If you are testing with Tensorflow version lower than 1.14, please edit a line in "compute_depth.cu" from
+#include "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" \
+to \
+#include "tensorflow/include/tensorflow/core/util/cuda_kernel_helper.h"
+
+Then issue the make commands again.
 ```shell
+$ cmake ..
 $ make -j
 ```
 
@@ -46,7 +52,7 @@ $ python extract_official_train_test_set_from_mat.py nyu_depth_v2_labeled.mat sp
 $ cd ..
 $ mkdir models
 # Get BTS model trained with NYU Depth V2
-$ python utils/download_from_gdrive.py 12SKRBuTNbwFJeC2AGkra9bjpzh4RsGaN models/bts_nyu.zip
+$ python utils/download_from_gdrive.py 1ipme-fkV4pIx87sOs31R9CD_Qg-85__h models/bts_nyu.zip
 $ cd models
 $ unzip bts_nyu.zip
 ```
@@ -56,6 +62,9 @@ $ cd ~/workspace/bts
 $ python bts_test.py arguments_test_nyu.txt
 ```
 This will save results to ./result_bts_nyu
+
+If you are using python3, you will encounter an error with function "iteritems".
+Then, replace it to "items" and re run the test code above.
 
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
@@ -120,7 +129,7 @@ Once you have KITTI dataset and official ground truth depthmaps, you can test an
 ```
 # Get KITTI model trained with KITTI Eigen split
 $ cd ~/workspace/bts
-$ python utils/download_from_gdrive.py 1dYVTqH8CJyCptfFnPJsgWVazxR7vkuUA models/bts_eigen.zip
+$ python utils/download_from_gdrive.py 1w4WbSQxui8GTDEsjX5xb4m7_-5yCznhQ models/bts_eigen.zip
 $ cd models && unzip bts_eigen.zip
 ```
 Test and save results.
