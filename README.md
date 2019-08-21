@@ -91,6 +91,12 @@ Once the dataset is ready, you can train the network using following command.
 $ cd ~/workspace/bts
 $ python bts_main.py arguments_train_nyu.txt
 ```
+You can see the progress of the training via
+```
+$ tensorboard --logdir ./models/bts_nyu_test/
+```
+and open localhost:6006 with your favorite browser.
+
 ### KITTI
 You can also train with KITTI dataset with following procedures.
 First, download the ground truth depthmaps from [KITTI](http://www.cvlibs.net/download.php?file=data_depth_annotated.zip).

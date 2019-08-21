@@ -12,7 +12,6 @@
 --num_threads 1
 --input_height 416
 --input_width 544
---do_rcfs
 --max_depth 10
 --do_random_rotate
 --degree 7.5
