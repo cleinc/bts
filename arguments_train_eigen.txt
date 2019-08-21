@@ -1,0 +1,21 @@
+--mode train
+--model_name bts_eigen_test
+--encoder densenet161_bts
+--dataset kitti
+--data_path ../dataset/kitti_dataset/
+--gt_path ../dataset/kitti_dataset/data_depth_annotated/
+--filenames_file ./train_test_inputs/eigen_train_files_with_gt.txt
+--batch_size 4
+--num_epochs 50
+--learning_rate 1e-4
+--num_gpus 1
+--num_threads 1
+--input_height 352
+--input_width 704
+--max_depth 80
+--do_kb_crop
+--do_random_rotate
+--degree 1.0
+--log_directory ./models/
+--pretrained_model ./models/densenet161_imagenet/model
+--fix_first_conv_blocks
