@@ -13,7 +13,7 @@ We tested with Tensorflow 1.14 and CUDA 10.0 on Ubuntu 18.04.
 $ cd ~
 $ mkdir workspace
 $ cd workspace
-$ git clone https://cogaplex-bts/bts
+$ git clone https://github.com/cogaplex-bts/bts
 $ cd bts/custom_layer
 $ mkdir build && cd build
 $ cmake ..
