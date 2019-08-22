@@ -2,7 +2,7 @@
 From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation [arXiv](https://arxiv.org/abs/1609.03677)
 
 ## Video Demo
-[![Screenshot](https://i9.ytimg.com/vi/1J-GSb0fROw/mq1.jpg?sqp=CIC_9OoF&rs=AOn4CLCCTClrxJJ80jsTWQWR-GNhFPMC6A)](https://www.youtube.com/watch?v=1J-GSb0fROw)
+[![Screenshot](https://img.youtube.com/vi/1J-GSb0fROw/maxresdefault.jpg)](https://www.youtube.com/watch?v=1J-GSb0fROw)
 
 ## Note
 This repository contains a Tensorflow implementation of BTS.\
