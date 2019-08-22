@@ -5,8 +5,8 @@ From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimat
 [![Screenshot](https://i9.ytimg.com/vi/1J-GSb0fROw/mq1.jpg?sqp=CIC_9OoF&rs=AOn4CLCCTClrxJJ80jsTWQWR-GNhFPMC6A)](https://www.youtube.com/watch?v=1J-GSb0fROw)
 
 ## Note
-This repository contains a Tensorflow implementation of BTS.
-We tested with Tensorflow 1.14 and CUDA 10.0 on Ubuntu 18.04.
+This repository contains a Tensorflow implementation of BTS.\
+We tested this code under Tensorflow 1.14, CUDA 10.0 on Ubuntu 18.04.
 
 ## Preparation
 ```shell
@@ -21,12 +21,12 @@ $ make -j
 ```
 If you encounter an error "fatal error: third_party/gpus/cuda/include/cuda_fp16.h: No such file or directory",
 open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from \
-#include "third_party/gpus/cuda/include/cuda_fp16.h"
+#include "third_party/gpus/cuda/include/cuda_fp16.h" \
 to \
 #include "cuda_fp16.h" \
 Also, you will need to edit lines in "tensorflow/include/tensorflow/core/util/gpu_device_functions.h" from \
 #include "third_party/gpus/cuda/include/cuComplex.h" \
-#include "third_party/gpus/cuda/include/cuda.h"
+#include "third_party/gpus/cuda/include/cuda.h" \
 to \
 #include "cuComplex.h" \
 #include "cuda.h"
@@ -61,10 +61,7 @@ Once the preparation steps completed, you can test BTS using following commands.
 $ cd ~/workspace/bts
 $ python bts_test.py arguments_test_nyu.txt
 ```
-This will save results to ./result_bts_nyu
-
-If you are using python3, you will encounter an error with function "iteritems".
-Then, replace it to "items" and re run the test code above.
+This will save results to ./result_bts_nyu.
 
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
