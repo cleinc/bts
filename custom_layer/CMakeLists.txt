@@ -46,8 +46,6 @@ message(${TF_NSYNC_INC})
 include_directories(${TF_NSYNC_INC})
 
 # C++11 required for tensorflow
-#set(CMAKE_CXX_FLAGS "-std=c++11 -O2 ${CMAKE_CXX_FLAGS}")
-#set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -O2 -D_MWAITXINTRIN_H_INCLUDED -D_FORCE_INLINES ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC ${CMAKE_CXX_FLAGS}")
 
 # if GCC > 5
@@ -55,7 +53,8 @@ if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0 OR CMAKE_CXX_COMPILER_VERSION
   set(CMAKE_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0 ${CMAKE_CXX_FLAGS}")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D GOOGLE_CUDA")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGOOGLE_CUDA")
+message("CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 #pass flags to c++ compiler
 #set(CUDA_PROPAGATE_HOST_FLAGS ON)
@@ -69,4 +68,4 @@ include_directories("/usr/local/")
 
 cuda_add_library(compute_depth SHARED compute_depth.cu compute_depth.cc
     OPTIONS -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC --expt-relaxed-constexpr)
-target_link_libraries(compute_depth -ltensorflow_framework)
+target_link_libraries(compute_depth -l:libtensorflow_framework.so.1)

@@ -72,15 +72,15 @@ REGISTER_OP("ComputeDepth")
 .SetShapeFn(ComputeDepthShapeFn);
 
 template <typename CPUDevice>
-void ComputeDepthKernel<CPUDevice>::operator()(const CPUDevice&d,
-                    const int batch_size, 
-                    const int input_height, 
-                    const int input_width,
-                    const int depth_height,
-                    const int depth_width,
-                    const float* input, 
-                    const float* focal, 
-                    float* depth)
+void ComputeDepthKernel<CPUDevice>::operator()(const CPUDevice& d,
+                                               const int batch_size, 
+                                               const int input_height, 
+                                               const int input_width,
+                                               const int depth_height,
+                                               const int depth_width,
+                                               const float* input, 
+                                               const float* focal, 
+                                               float* depth)
 {
     for(int index = 0; index < batch_size*depth_height*depth_width; ++index)
     {
@@ -219,14 +219,14 @@ struct ComputeDepthOp<GPUDevice> : public OpKernel {
             OP_REQUIRES_OK(context, context->allocate_output(0, depth_shape, &depth));
 
             functor::ComputeDepthKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
-                                                batch_size,
-                                                input_height,
-                                                input_width,
-                                                depth_height,
-                                                depth_width,
-                                                input.flat<float>().data(),
-                                                focal.flat<float>().data(),
-                                                depth->flat<float>().data());
+                                                     batch_size,
+                                                     input_height,
+                                                     input_width,
+                                                     depth_height,
+                                                     depth_width,
+                                                     input.flat<float>().data(),
+                                                     focal.flat<float>().data(),
+                                                     depth->flat<float>().data());
         }
 };
 REGISTER_KERNEL_BUILDER(Name("ComputeDepth").Device(DEVICE_GPU), ComputeDepthOp<GPUDevice>);
@@ -336,15 +336,15 @@ class ComputeDepthGradOp : public OpKernel {
             const int input_width = input_shape.dim_size(2);
 
             ComputeDepthGradKernel<Device>()(context->eigen_device<Device>(),
-                                                 batch_size,
-                                                 input_height,
-                                                 input_width,
-                                                 depth_grad_height,
-                                                 depth_grad_width,
-                                                 depth_grad.flat<float>().data(),
-                                                 input.flat<float>().data(),
-                                                 focal.flat<float>().data(),
-                                                 grad_input->flat<float>().data());
+                                             batch_size,
+                                             input_height,
+                                             input_width,
+                                             depth_grad_height,
+                                             depth_grad_width,
+                                             depth_grad.flat<float>().data(),
+                                             input.flat<float>().data(),
+                                             focal.flat<float>().data(),
+                                             grad_input->flat<float>().data());
         }
 };
 REGISTER_KERNEL_BUILDER(Name("ComputeDepthGrad").Device(DEVICE_CPU), ComputeDepthGradOp<CPUDevice>);
@@ -405,15 +405,15 @@ class ComputeDepthGradOp<GPUDevice> : public OpKernel {
             const int input_width = input_shape.dim_size(2);
 
             functor::ComputeDepthGradKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
-                                                 batch_size,
-                                                 input_height,
-                                                 input_width,
-                                                 depth_grad_height,
-                                                 depth_grad_width,
-                                                 depth_grad.flat<float>().data(),
-                                                 input.flat<float>().data(),
-                                                 focal.flat<float>().data(),
-                                                 grad_input->flat<float>().data());
+                                                         batch_size,
+                                                         input_height,
+                                                         input_width,
+                                                         depth_grad_height,
+                                                         depth_grad_width,
+                                                         depth_grad.flat<float>().data(),
+                                                         input.flat<float>().data(),
+                                                         focal.flat<float>().data(),
+                                                         grad_input->flat<float>().data());
         }
 };
 REGISTER_KERNEL_BUILDER(Name("ComputeDepthGrad").Device(DEVICE_GPU), ComputeDepthGradOp<GPUDevice>);
