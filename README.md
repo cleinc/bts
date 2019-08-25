@@ -2,7 +2,7 @@
 From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation [arXiv](https://arxiv.org/abs/1609.03677)
 
 ## Video Demo
-[![Screenshot](https://img.youtube.com/vi/czmJTtVKfG8/maxresdefault.jpg)](https://www.youtube.com/watcg?v=czmJTtVKfG8)
+[![Screenshot](https://img.youtube.com/vi/czmJTtVKfG8/maxresdefault.jpg)](https://www.youtube.com/watch?v=czmJTtVKfG8)
 
 [![Screenshot](https://img.youtube.com/vi/1J-GSb0fROw/maxresdefault.jpg)](https://www.youtube.com/watch?v=1J-GSb0fROw)
 
