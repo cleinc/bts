@@ -58,10 +58,15 @@ for key, val in vars(__import__(args.model_name)).iteritems():
 def test_sequence(params):
     image_files = []
 
-    for filename in glob.glob(os.path.join(args.image_path, '*.jpg')):
+    for filename in glob.glob(os.path.join(args.image_path, '*.png')):
         image_files.append(filename)
 
     image_files.sort()
+
+    num_test_samples = len(image_files)
+    if num_test_samples == 0:
+        print("No images found! Program abort.")
+        return
 
     if args.dataset == 'nyu':
         focal = 518.8579
@@ -95,14 +100,17 @@ def test_sequence(params):
         # RESTORE
         train_saver.restore(sess, restore_path)
 
-        num_test_samples = len(image_files)
-
         print('now testing {} files for model {}'.format(num_test_samples, args.checkpoint_path))
 
         print('Saving result pngs')
         if not os.path.exists(os.path.dirname(args.out_path)):
             try:
                 os.mkdir(args.out_path)
+                os.mkdir(args.out_path + '/depth')
+                os.mkdir(args.out_path + '/lpg2x2')
+                os.mkdir(args.out_path + '/lpg4x4')
+                os.mkdir(args.out_path + '/lpg8x8')
+                os.mkdir(args.out_path + '/rgb')
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -110,13 +118,15 @@ def test_sequence(params):
         start_time = time.time()
         for s in range(num_test_samples):
             input_image = cv2.imread(image_files[s])
-            input_image = input_image.astype(np.float32)
 
             if args.dataset == 'kitti':
                 height, width, ch = input_image.shape
                 top_margin = int(height - 352)
                 left_margin = int((width - 1216) / 2)
                 input_image = input_image[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
+
+            input_image_original = input_image
+            input_image = input_image.astype(np.float32)
 
             # Normalize image
             input_image[:, :, 0] = (input_image[:, :, 0] - 103.939) * 0.017
@@ -129,9 +139,24 @@ def test_sequence(params):
                 [model.depth_est, model.depth_8x8, model.depth_4x4, model.depth_2x2], feed_dict={image: input_images})
 
             pred_depth = depth.squeeze()
+            pred_8x8 = pred_8x8.squeeze()
+            pred_4x4 = pred_4x4.squeeze()
+            pred_2x2 = pred_2x2.squeeze()
 
-            save_path = os.path.join(args.out_path, image_files[s].split('/')[-1])
+            save_path = os.path.join(args.out_path, 'depth', image_files[s].split('/')[-1])
             plt.imsave(save_path, np.log10(pred_depth), cmap='Greys')
+
+            save_path = os.path.join(args.out_path, 'rgb', image_files[s].split('/')[-1])
+            cv2.imwrite(save_path, input_image_original)
+
+            save_path = os.path.join(args.out_path, 'lpg2x2', image_files[s].split('/')[-1])
+            plt.imsave(save_path, np.log10(pred_2x2), cmap='Greys')
+
+            save_path = os.path.join(args.out_path, 'lpg4x4', image_files[s].split('/')[-1])
+            plt.imsave(save_path, np.log10(pred_4x4), cmap='Greys')
+
+            save_path = os.path.join(args.out_path, 'lpg8x8', image_files[s].split('/')[-1])
+            plt.imsave(save_path, np.log10(pred_8x8), cmap='Greys')
 
             print('{}/{}'.format(s, num_test_samples))
 
