@@ -1,5 +1,5 @@
 # BTS
-From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation [arXiv](https://arxiv.org/abs/1609.03677)
+From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation [arXiv](https://arxiv.org/abs/1907.10326)
 
 ## Video Demo
 [![Screenshot](https://img.youtube.com/vi/2fPdZYzx9Cg/maxresdefault.jpg)](https://www.youtube.com/watch?v=2fPdZYzx9Cg)
