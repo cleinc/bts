@@ -17,25 +17,37 @@ $ cd workspace
 $ git clone https://github.com/cogaplex-bts/bts
 $ cd bts/custom_layer
 $ mkdir build && cd build
-$ cmake ..
+$ cmake -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda ..
 $ make -j
 ```
 If you encounter an error "fatal error: third_party/gpus/cuda/include/cuda_fp16.h: No such file or directory",
-open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from \
-#include "third_party/gpus/cuda/include/cuda_fp16.h" \
-to \
-#include "cuda_fp16.h" \
-Also, you will need to edit lines in "tensorflow/include/tensorflow/core/util/gpu_device_functions.h" from \
-#include "third_party/gpus/cuda/include/cuComplex.h" \
-#include "third_party/gpus/cuda/include/cuda.h" \
-to \
-#include "cuComplex.h" \
+open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from
+```
+#include "third_party/gpus/cuda/include/cuda_fp16.h"
+```
+to
+```
+#include "cuda_fp16.h"
+```
+Also, you will need to edit lines in "tensorflow/include/tensorflow/core/util/gpu_device_functions.h" from
+```
+#include "third_party/gpus/cuda/include/cuComplex.h"
+#include "third_party/gpus/cuda/include/cuda.h"
+```
+to
+```
+#include "cuComplex.h"
 #include "cuda.h"
+```
 
 If you are testing with Tensorflow version lower than 1.14, please edit a line in "compute_depth.cu" from
-#include "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" \
-to \
+```
+#include "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h"
+```
+to
+```
 #include "tensorflow/include/tensorflow/core/util/cuda_kernel_helper.h"
+```
 
 Then issue the make commands again.
 ```shell

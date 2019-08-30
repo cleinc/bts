@@ -311,6 +311,7 @@ class BtsModel(object):
             self.depth_4x4 = depth_4x4_scaled
             self.depth_8x8 = depth_8x8_scaled
 
+            print("==================================")
             print(" upconv5 in/out: {:>4} /{:>4}".format(dense_features.shape[-1], upconv5.shape[-1]))
             print("  iconv5 in/out: {:>4} /{:>4}".format(concat5.shape[-1], iconv5.shape[-1]))
             print(" upconv4 in/out: {:>4} /{:>4}".format(iconv5.shape[-1], upconv4.shape[-1]))
@@ -329,6 +330,7 @@ class BtsModel(object):
             print(" upconv1 in/out: {:>4} /{:>4}".format(iconv2.shape[-1], upconv1.shape[-1]))
             print("  iconv1 in/out: {:>4} /{:>4}".format(concat1.shape[-1], iconv1.shape[-1]))
             print("   depth in/out: {:>4} /{:>4}".format(iconv1.shape[-1], self.depth_est.shape[-1]))
+            print("==================================")
 
     def build_densenet121_bts(self, net_input, reuse):
         with tf.variable_scope('encoder'):
