@@ -253,7 +253,7 @@ def train(params):
                 examples_per_sec = params.batch_size / duration * 100
                 duration = 0
                 time_sofar = (time.time() - start_time) / 3600
-                training_time_left = (num_total_steps / (step + 1.0)) * time_sofar
+                training_time_left = (num_total_steps / step - 1.0) * time_sofar
                 print('%s:' % args.model_name)
                 print_string = 'examples/s: {:4.2f} | loss: {:.5f} | time elapsed: {:.2f}h | time left: {:.2f}h'
                 print(print_string.format(examples_per_sec, loss_value, time_sofar, training_time_left))
