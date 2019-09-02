@@ -246,7 +246,7 @@ def train(params):
             
             _, lr, loss_value = sess.run([apply_gradient_op, learning_rate, total_loss])
             
-            print('step: {}/{}, lr: {:.12f}, loss: {:.12f}'.format(step, num_total_steps, lr, loss_value))
+            print('step: {}, learning_rate: {}, loss_value: {}'.format(step, lr, loss_value))
 
             duration += time.time() - before_op_time
             if step and step % 100 == 0:

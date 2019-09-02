@@ -139,19 +139,6 @@ def test(params):
             summary_path = os.path.join(args.checkpoint_path, 'eval')
         write_summary = True
 
-    if len(steps) == 0:
-        print('No new model to evaluate. Abort.')
-        return
-
-    time_modified = os.path.getmtime(args.checkpoint_path + 'checkpoint')
-    time_diff = time.time() - time_modified
-    if time_diff < 60:
-        print('Model file might not be mature due to short time_diff: %s' % str(time_diff))
-        print('Aborting')
-        return
-    else:
-        print('time_diff: %s' % str(time_diff))
-
     dataloader = BtsDataloader(args.data_path, args.gt_path, args.filenames_file, params, 'test',
                                do_resize=args.do_resize, resize_height=args.resize_height, resize_width=args.resize_width,
                                do_kb_crop=args.do_kb_crop)
@@ -185,7 +172,7 @@ def test(params):
                 restore_path = args.checkpoint_path
             else:
                 restore_path = os.path.join(args.checkpoint_path, 'model-' + str(int(step)))
-
+    
             # RESTORE
             train_saver.restore(sess, restore_path)
         
