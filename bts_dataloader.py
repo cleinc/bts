@@ -227,7 +227,6 @@ class BtsDataloader(object):
 
         return image_cropped, depth_gt_cropped, focal
 
-
     @staticmethod
     def augment_image(image):
         # gamma augmentation
