@@ -374,10 +374,7 @@ class BtsModel(object):
             depth_gt_masked = tf.boolean_mask(self.depth_gt, self.mask)
             depth_est_masked = tf.boolean_mask(self.depth_est, self.mask)
 
-            if self.params.dataset == 'nyu':
-                d = tf.log(depth_est_masked * 100) - tf.log(depth_gt_masked * 100)  # Best
-            else:
-                d = tf.log(depth_est_masked * 10) - tf.log(depth_gt_masked * 10)  # Best
+            d = tf.log(depth_est_masked) - tf.log(depth_gt_masked)  # Best
 
             self.silog_loss = tf.sqrt(tf.reduce_mean(d ** 2) - 0.85 * (tf.reduce_mean(d) ** 2)) * 10.0
             self.total_loss = self.silog_loss
