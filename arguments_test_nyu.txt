@@ -4,6 +4,6 @@
 --filenames_file ./train_test_inputs/nyudepthv2_test_files_with_gt.txt
 --model_name bts_nyu
 --checkpoint_path ./models/bts_nyu/model
---input_height 448
---input_width 608
+--input_height 480
+--input_width 640
 --max_depth 10

@@ -148,22 +148,14 @@ def test():
 def eval(pred_depths):
 
     num_samples = len(pred_depths)
-    pred_depths_resized = []
+    pred_depths_valid = []
 
     i = 0
     for t_id in range(num_samples):
         if t_id in missing_ids:
             continue
 
-        h, w = gt_depths[i].shape
-        i = i + 1
-        h_p, w_p = pred_depths[t_id].shape
-
-        if (h_p != h or w_p != w) and not args.do_kb_crop and not args.dataset == 'nyu':
-            pred_depth_resized = cv2.resize(pred_depths[t_id], (w, h), interpolation=cv2.INTER_LINEAR)
-            pred_depths_resized.append(pred_depth_resized)
-        else:
-            pred_depths_resized.append(pred_depths[t_id])
+        pred_depths_valid.append(pred_depths[t_id])
 
     num_samples = num_samples - len(missing_ids)
 
@@ -180,7 +172,7 @@ def eval(pred_depths):
     for i in range(num_samples):
 
         gt_depth = gt_depths[i]
-        pred_depth = pred_depths_resized[i]
+        pred_depth = pred_depths_valid[i]
 
         pred_depth[pred_depth < args.min_depth_eval] = args.min_depth_eval
         pred_depth[pred_depth > args.max_depth_eval] = args.max_depth_eval

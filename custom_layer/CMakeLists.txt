@@ -34,6 +34,16 @@ else(WIN32)
     string(REPLACE "\n" "" TF_LINK_FLAGS "${TF_LINK_FLAGS}")
 endif(WIN32)
 
+string(REPLACE "[" "" TF_COMPILE_FLAGS "${TF_COMPILE_FLAGS}")
+string(REPLACE "]" "" TF_COMPILE_FLAGS "${TF_COMPILE_FLAGS}")
+string(REPLACE "'" "" TF_COMPILE_FLAGS "${TF_COMPILE_FLAGS}")
+string(REPLACE "," "" TF_COMPILE_FLAGS "${TF_COMPILE_FLAGS}")
+
+string(REPLACE "[" "" TF_LINK_FLAGS "${TF_LINK_FLAGS}")
+string(REPLACE "]" "" TF_LINK_FLAGS "${TF_LINK_FLAGS}")
+string(REPLACE "'" "" TF_LINK_FLAGS "${TF_LINK_FLAGS}")
+string(REPLACE "," "" TF_LINK_FLAGS "${TF_LINK_FLAGS}")
+
 message("TF_INC: ${TF_INC}")
 message("TF_LIB: ${TF_LIB}")
 message("TF_COMPILE_FLAGS: ${TF_COMPILE_FLAGS}")
@@ -46,18 +56,10 @@ message(${TF_NSYNC_INC})
 include_directories(${TF_NSYNC_INC})
 
 # C++11 required for tensorflow
-set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC ${CMAKE_CXX_FLAGS}")
-
-# if GCC > 5
-if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 5.0)
-  set(CMAKE_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0 ${CMAKE_CXX_FLAGS}")
-endif()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGOOGLE_CUDA")
+set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC ${CMAKE_CXX_FLAGS} ${TF_COMPILE_FLAGS} -DGOOGLE_CUDA")
 message("CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 #pass flags to c++ compiler
-#set(CUDA_PROPAGATE_HOST_FLAGS ON)
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11 -DNDEBUG")
 
@@ -68,4 +70,4 @@ include_directories("/usr/local/")
 
 cuda_add_library(compute_depth SHARED compute_depth.cu compute_depth.cc
     OPTIONS -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC --expt-relaxed-constexpr)
-target_link_libraries(compute_depth -l:libtensorflow_framework.so.1)
+target_link_libraries(compute_depth ${TF_LINK_FLAGS})

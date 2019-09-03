@@ -56,8 +56,6 @@ parser.add_argument('--max_depth',                 type=float, help='maximum dep
 parser.add_argument('--do_random_rotate',                      help='if set, will perform random rotation for augmentation', action='store_true')
 parser.add_argument('--degree',                    type=float, help='random rotation maximum degree', default=5.0)
 parser.add_argument('--do_kb_crop',                            help='if set, crop input images as kitti benchmark images', action='store_true')
-parser.add_argument('--resize_height',             type=int,   help='resize height', default=-1)
-parser.add_argument('--resize_width',              type=int,   help='resize width', default=-1)
 parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=1)
 parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
 parser.add_argument('--log_directory',             type=str,   help='directory to save checkpoints and summaries', default='')
@@ -226,7 +224,7 @@ def train(params):
 
         # Load checkpoint if set
         if args.checkpoint_path != '':
-            restore_path = args.checkpoint_path.split(".")[0]
+            restore_path = args.checkpoint_path
             train_saver.restore(sess, restore_path)
 
         if args.retrain:

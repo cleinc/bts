@@ -19,7 +19,8 @@
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "compute_depth.h"
-#include "tensorflow/core/util/gpu_kernel_helper.h"
+// #include "tensorflow/core/util/cuda_kernel_helper.h" // tf <= 1.13.2
+#include "tensorflow/core/util/gpu_kernel_helper.h" // tf >= 1.14.0
 
 using namespace tensorflow;
 

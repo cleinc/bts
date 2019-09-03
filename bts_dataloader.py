@@ -23,9 +23,7 @@ class BtsDataloader(object):
     """bts dataloader"""
 
     def __init__(self, data_path, gt_path, filenames_file, params, mode,
-                 do_rotate=False, degree=5.0,
-                 do_resize=False, resize_height=-1, resize_width=-1,
-                 do_kb_crop=False):
+                 do_rotate=False, degree=5.0, do_kb_crop=False):
 
         self.data_path = data_path
         self.gt_path = gt_path
@@ -34,10 +32,6 @@ class BtsDataloader(object):
 
         self.do_rotate = do_rotate
         self.degree = degree
-
-        self.do_resize = do_resize
-        self.resize_height = resize_height
-        self.resize_width  = resize_width
 
         self.do_kb_crop = do_kb_crop
 
@@ -81,15 +75,6 @@ class BtsDataloader(object):
             top_margin = tf.to_int32(height - 352)
             left_margin = tf.to_int32((width - 1216) / 2)
             image = image[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
-
-        if self.do_resize is True:
-            if self.resize_width != -1 and self.resize_height != -1:
-                image = tf.image.resize_images(image, [self.resize_height, self.resize_width], tf.image.ResizeMethod.AREA, align_corners=True)
-            else:
-                image = tf.image.resize_images(image, [self.params.height, self.params.width], tf.image.ResizeMethod.AREA, align_corners=True)
-
-            width = tf.to_float(array_ops.shape(image)[1])
-            focal = focal * width / width_o
 
         return image, focal
 
@@ -144,18 +129,7 @@ class BtsDataloader(object):
             depth_gt = tf.contrib.image.rotate(depth_gt, random_angle, interpolation='NEAREST')
 
         print('Do random cropping from fixed size input')
-        image, depth_gt, focal = self.random_crop_fixed_size(image, depth_gt, self.resize_height, self.resize_width, focal)
-
-        if self.do_resize is True:
-            width = tf.shape(image)[1]
-            image = tf.image.resize_images(image, [self.params.height, self.params.width], tf.image.ResizeMethod.AREA)
-            if self.params.dataset == 'nyu':
-                depth_gt = tf.image.resize_images(depth_gt, [self.params.height, self.params.width], tf.image.ResizeMethod.BILINEAR)
-            elif self.params.dataset == 'kitti':
-                # Since kitti's gt has frequent holes in many parts, NN method should be preferred
-                depth_gt = tf.image.resize_images(depth_gt, [self.params.height, self.params.width], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-
-            focal = focal * self.params.width / tf.to_float(width)
+        image, depth_gt = self.random_crop_fixed_size(image, depth_gt)
 
         return image, depth_gt, focal
 
@@ -210,22 +184,14 @@ class BtsDataloader(object):
             channels[i] -= means[i]
         return tf.concat(axis=2, values=channels)
 
-    def random_crop_fixed_size(self, image, depth_gt, new_h, new_w, focal):
-        if new_h != -1 and new_w != -1:
-            print('Resize inputs to {}x{} before feeding the network'. format(new_h, new_w))
-            width_o = tf.to_float(array_ops.shape(image)[1])
-            width = tf.to_float(new_w)
-            image = tf.image.resize_images(image, [new_h, new_w], tf.image.ResizeMethod.AREA, align_corners=True)
-            depth_gt = tf.image.resize_images(depth_gt, [new_h, new_w], tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=True)
-            focal = focal * width / width_o
-
+    def random_crop_fixed_size(self, image, depth_gt):
         image_depth = tf.concat([image, depth_gt], 2)
         image_depth_cropped = tf.random_crop(image_depth, [self.params.height, self.params.width, 4])
 
         image_cropped = image_depth_cropped[:, :, 0:3]
         depth_gt_cropped = tf.expand_dims(image_depth_cropped[:, :, 3], 2)
 
-        return image_cropped, depth_gt_cropped, focal
+        return image_cropped, depth_gt_cropped
 
     @staticmethod
     def augment_image(image):

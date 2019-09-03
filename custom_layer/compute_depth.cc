@@ -287,7 +287,6 @@ void ComputeDepthGradKernel<CPUDevice>::operator() (const CPUDevice &d,
                 float b = input[input_index + 1];
                 float c = input[input_index + 2];
                 float d = input[input_index + 3];
-                // float denominator = d * sqrtf(u*u + v*v + 1.0f);
                 float denominator = a*u + b*v + c;
                 float denominator_sq = denominator*denominator;
                 float numerator = -d * sqrtf(u*u + v*v + 1.0f);

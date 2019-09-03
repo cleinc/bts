@@ -50,11 +50,6 @@ parser.add_argument('--input_width',         type=int,   help='input width', def
 parser.add_argument('--max_depth',           type=float, help='maximum depth in estimation', default=80)
 parser.add_argument('--checkpoint_path',     type=str,   help='path to a specific checkpoint to load', default='')
 parser.add_argument('--dataset',             type=str,   help='dataset to train on, make3d or nyudepthv2', default='nyu')
-
-parser.add_argument('--do_resize',                       help='if set, resize input images', action='store_true')
-parser.add_argument('--resize_height',       type=int,   help='resize height for input', default=-1)
-parser.add_argument('--resize_width',        type=int,   help='resize width for input',  default=-1)
-parser.add_argument('--save_png',                        help='if set, just saves results to png and quits', action='store_true')
 parser.add_argument('--do_kb_crop',                      help='if set, crop input images as kitti benchmark images', action='store_true')
 
 if sys.argv.__len__() == 2:
@@ -82,9 +77,7 @@ def get_num_lines(file_path):
 def test(params):
     """Test function."""
     
-    dataloader = BtsDataloader(args.data_path, None, args.filenames_file, params, 'test',
-                               do_resize=args.do_resize, resize_height=args.resize_height, resize_width=args.resize_width,
-                               do_kb_crop=args.do_kb_crop)
+    dataloader = BtsDataloader(args.data_path, None, args.filenames_file, params, 'test', do_kb_crop=args.do_kb_crop)
 
     dataloader_iter = dataloader.loader.make_initializable_iterator()
     iter_init_op = dataloader_iter.initializer
@@ -140,8 +133,6 @@ def test(params):
         print('Done.')
 
         save_name = 'result_' + args.model_name
-        if args.do_resize:
-            save_name = save_name + '_resized'
 
         print('Saving result pngs')
         if not os.path.exists(os.path.dirname(save_name)):
@@ -177,10 +168,6 @@ def test(params):
             pred_4x4 = pred_4x4s[s]
             pred_2x2 = pred_2x2s[s]
 
-            if args.do_resize:
-                h, w, _ = image.shape
-                pred_depth = cv2.resize(pred_depth, (w, h), interpolation=cv2.INTER_LINEAR)
-
             if args.dataset == 'kitti' or args.dataset == 'kitti_benchmark':
                 pred_depth_scaled = pred_depth * 256.0
             else:
@@ -190,7 +177,6 @@ def test(params):
             cv2.imwrite(filename_png, pred_depth_scaled, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
             cv2.imwrite(filename_image_png, image)
-
             if args.dataset == 'nyu':
                 pred_depth_cropped = np.zeros((480, 640), dtype=np.float32) + 1
                 pred_depth_cropped[10:-1 - 10, 10:-1 - 10] = pred_depth[10:-1 - 10, 10:-1 - 10]
