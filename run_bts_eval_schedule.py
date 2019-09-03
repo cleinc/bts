@@ -22,7 +22,7 @@ scheduler = BlockingScheduler()
 @scheduler.scheduled_job('interval', minutes=1, start_date=datetime.datetime.now() + datetime.timedelta(0,3))
 def run_eval():
     command = 'export CUDA_VISIBLE_DEVICES=0; ' \
-              '/usr/bin/python2.7 ' \
+              '/usr/bin/python ' \
               'bts_eval.py ' \
               '--encoder densenet161_bts ' \
               '--dataset kitti ' \

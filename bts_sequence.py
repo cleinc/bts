@@ -49,7 +49,7 @@ args = parser.parse_args()
 model_dir = os.path.dirname(args.checkpoint_path)
 
 sys.path.append(model_dir)
-for key, val in vars(__import__(args.model_name)).iteritems():
+for key, val in vars(__import__(args.model_name)).items():
     if key.startswith('__') and key.endswith('__'):
         continue
     vars()[key] = val

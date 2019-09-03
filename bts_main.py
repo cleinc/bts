@@ -79,7 +79,7 @@ elif args.mode == 'train' and args.checkpoint_path:
     model_name = os.path.basename(model_dir)
     import sys
     sys.path.append(model_dir)
-    for key, val in vars(__import__(model_name)).iteritems():
+    for key, val in vars(__import__(model_name)).items():
         if key.startswith('__') and key.endswith('__'):
             continue
         vars()[key] = val
