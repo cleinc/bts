@@ -1,0 +1,8 @@
+# Notebook checkpoints
+.ipynb_checkpoints
+
+# python cache files
+*.pyc
+
+
+custom_layer/build
