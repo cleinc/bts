@@ -25,6 +25,7 @@ import errno
 import matplotlib.pyplot as plt
 import cv2
 import sys
+from tqdm import tqdm
 
 from bts_dataloader import *
 
@@ -118,7 +119,8 @@ def test(params):
         pred_2x2s = []
 
         start_time = time.time()
-        for s in range(num_test_samples):
+        print('Processing images..')
+        for s in tqdm(range(num_test_samples)):
             depth, pred_8x8, pred_4x4, pred_2x2 = sess.run([model.depth_est, model.depth_8x8, model.depth_4x4, model.depth_2x2])
             pred_depths.append(depth[0].squeeze())
 
@@ -126,15 +128,11 @@ def test(params):
             pred_4x4s.append(pred_4x4[0].squeeze())
             pred_2x2s.append(pred_2x2[0].squeeze())
 
-            print('{}/{} processing done'.format(s+1, num_test_samples))
-
-        elapsed_time = time.time() - start_time
-        print('Elapesed time: %s' % str(elapsed_time))
         print('Done.')
 
         save_name = 'result_' + args.model_name
 
-        print('Saving result pngs')
+        print('Saving result pngs..')
         if not os.path.exists(os.path.dirname(save_name)):
             try:
                 os.mkdir(save_name)
@@ -145,7 +143,7 @@ def test(params):
                 if e.errno != errno.EEXIST:
                     raise
 
-        for s in range(num_test_samples):
+        for s in tqdm(range(num_test_samples)):
             if args.dataset == 'kitti':
                 date_drive = lines[s].split('/')[1]
                 filename_png = save_name + '/raw/' + date_drive + '_' + lines[s].split()[0].split('/')[-1].replace('.jpg', '.png')
@@ -201,8 +199,6 @@ def test(params):
                 plt.imsave(filename_lpg_cmap_png, np.log10(pred_4x4), cmap='Greys')
                 filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_2x2.png')
                 plt.imsave(filename_lpg_cmap_png, np.log10(pred_2x2), cmap='Greys')
-
-            print('{}/{} saving done'.format(s+1, num_test_samples))
 
         return
 
