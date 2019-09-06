@@ -10,9 +10,9 @@ From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimat
 
 ## Note
 This repository contains a Tensorflow implementation of BTS.\
-We tested this code under python 2.7 and 3.6, Tensorflow 1.14, CUDA 10.0 on Ubuntu 18.04. \
+We tested this code under python 2.7 and 3.6, Tensorflow 1.14.0, CUDA 10.0 on Ubuntu 18.04. \
 <strong>
-If you use TensorFlow built from source, it is okay with v1.14. \
+If you use TensorFlow built from source, it is okay with v1.14.0. \
 If you use TensorFlow installed using pip, it is okay up to v1.13.2. \
 Currently, if we use TensorFlow v1.14.0 installed using pip, we get segmentation fault.
 </strong>
@@ -28,6 +28,10 @@ $ mkdir build && cd build
 $ cmake -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda ..
 $ make -j
 ```
+<strong>
+For TensorFlow v1.14.0
+</strong>
+
 If you encounter an error "fatal error: third_party/gpus/cuda/include/cuda_fp16.h: No such file or directory",
 open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from
 ```
@@ -47,6 +51,10 @@ to
 #include "cuComplex.h"
 #include "cuda.h"
 ```
+
+<strong>
+For TensorFlow up to v1.13.2
+</strong>
 
 If you are testing with Tensorflow version lower than 1.14, please edit a line in "compute_depth.cu" from
 ```

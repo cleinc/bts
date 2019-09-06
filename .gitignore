@@ -6,3 +6,11 @@
 
 
 custom_layer/build
+.idea
+models
+result*
+.gitignore
+*.mat
+*.zip
+!splits.mat
+utils/toolbox_nyu_depth_v2
