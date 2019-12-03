@@ -1,3 +1,7 @@
+
+# Note
+This repository is a fully TensorFlow implementation of BTS model. It is forked from [original repository](https://github.com/saeid-h/bts-fully-tf). The code is modified to run with TensorFlow 1.6 without cuda code.
+
 # BTS
 From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation   
 [arXiv](https://arxiv.org/abs/1907.10326)  
