@@ -12,15 +12,6 @@ From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimat
 ## Video Demo 2
 [![Screenshot](https://img.youtube.com/vi/1J-GSb0fROw/maxresdefault.jpg)](https://www.youtube.com/watch?v=1J-GSb0fROw)
 
-## Note
-This repository contains a Tensorflow implementation of BTS.\
-We tested this code under python 2.7 and 3.6, Tensorflow 1.14.0, CUDA 10.0 on Ubuntu 18.04. \
-<strong>
-If you use TensorFlow built from source, it is okay with v1.14.0. \
-If you use TensorFlow installed using pip, it is okay up to v1.13.2. \
-Currently, if we use TensorFlow v1.14.0 installed using pip, we get segmentation fault.
-</strong>
-
 ## Testing with [NYU Depth V2](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html)
 ```shell
 $ cd ~/workspace/bts/utils

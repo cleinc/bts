@@ -43,7 +43,7 @@ class BtsDataloader(object):
             mini_batch_size = int(self.params.batch_size / self.params.num_gpus)
 
             self.loader = tf.data.Dataset.from_tensor_slices(filenames)
-            self.loader = self.loader.apply(tf.contrib.data.shuffle_and_repeat(len(filenames)))
+            self.loader = self.loader.shuffle(len(filenames)).repeat()
             self.loader = self.loader.map(self.parse_function_train, num_parallel_calls=params.num_threads)
             self.loader = self.loader.map(self.train_preprocess, num_parallel_calls=params.num_threads)
             self.loader = self.loader.batch(mini_batch_size)
@@ -60,7 +60,7 @@ class BtsDataloader(object):
         split_line = tf.string_split([line]).values
         image_path = tf.string_join([self.data_path, split_line[0]])
 
-        if self.params.dataset == 'nyu':
+        if self.params.dataset in ['nyu', 'matterport']:
             image = tf.image.decode_jpeg(tf.read_file(image_path))
         else:
             image = tf.image.decode_png(tf.read_file(image_path))
@@ -92,16 +92,16 @@ class BtsDataloader(object):
     def parse_function_train(self, line):
         split_line = tf.string_split([line]).values
         image_path = tf.string_join([self.data_path, split_line[0]])
-        depth_gt_path = tf.string_join([self.gt_path, tf.string_strip(split_line[1])])
+        depth_gt_path = tf.string_join([self.gt_path[:-1], split_line[1]])
 
-        if self.params.dataset == 'nyu':
+        if self.params.dataset in ['nyu', 'matterport']:
             image = tf.image.decode_jpeg(tf.read_file(image_path))
         else:
             image = tf.image.decode_png(tf.read_file(image_path))
 
         depth_gt = tf.image.decode_png(tf.read_file(depth_gt_path), channels=0, dtype=tf.uint16)
 
-        if self.params.dataset == 'nyu':
+        if self.params.dataset in ['nyu', 'matterport']:
             depth_gt = tf.cast(depth_gt, tf.float32) / 1000.0
         else:
             depth_gt = tf.cast(depth_gt, tf.float32) / 256.0
@@ -189,7 +189,7 @@ class BtsDataloader(object):
         image_depth_cropped = tf.random_crop(image_depth, [self.params.height, self.params.width, 4])
 
         image_cropped = image_depth_cropped[:, :, 0:3]
-        depth_gt_cropped = tf.expand_dims(image_depth_cropped[:, :, 3], 2)
+        depth_gt_cropped = image_depth_cropped[:, :, 3:4]
 
         return image_cropped, depth_gt_cropped
 

@@ -22,11 +22,8 @@ import time
 import datetime
 import sys
 
-from average_gradients import *
 from tensorflow.python import pywrap_tensorflow
 from bts_dataloader import *
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 
 def convert_arg_line_to_args(arg_line):
@@ -183,14 +180,9 @@ def train(params):
                     else:
                         g_vars = None
                     
-                    grads = opt_step.compute_gradients(loss, var_list=g_vars)
-
-                    tower_grads.append(grads)
-
+                    
         with tf.variable_scope(tf.get_variable_scope()):
             with tf.device('/gpu:%d' % (args.num_gpus - 1)):
-                grads = average_gradients(tower_grads)
-                apply_gradient_op = opt_step.apply_gradients(grads, global_step=global_step)
                 total_loss = tf.reduce_mean(tower_losses)
 
         tf.summary.scalar('learning_rate', learning_rate, ['model_0'])
@@ -242,7 +234,7 @@ def train(params):
                 sess.run(iter_init_op)
                 should_init_iter_op = False
             
-            _, lr, loss_value = sess.run([apply_gradient_op, learning_rate, total_loss])
+            _, lr, loss_value = sess.run([total_opt, learning_rate, total_loss])
             
             print('step: {}/{}, lr: {:.12f}, loss: {:.12f}'.format(step, num_total_steps, lr, loss_value))
 

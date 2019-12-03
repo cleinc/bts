@@ -22,12 +22,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
 
-sys.path.append("./custom_layer/")
-
-import _compute_depth_grad
-
-compute_depth_module = tf.load_op_library('custom_layer/build/libcompute_depth.so')
-
 bts_parameters = namedtuple('parameters', 'encoder, '
                                           'height, width, '
                                           'max_depth, '
@@ -54,6 +48,8 @@ class BtsModel(object):
         self.bn_training = bn_training
         self.is_training = True if mode == 'train' else False
 
+        self.gt_th = {'nyu':0.1, 'kitti':1.0, 'matterport':0.1}
+		
         self.build_model(net_input=self.input_image, reuse=self.reuse_variables)
 
         if self.mode == 'test':
@@ -62,17 +58,36 @@ class BtsModel(object):
         self.build_losses()
         self.build_summaries()
 
-    def upsample_nn(self, x, ratio):
+    def find_uv(self):
+		h = int(self.input_image.shape[1]) 
+		w = int(self.input_image.shape[2])
+		self.u, self.v = tf.meshgrid(np.linspace(0, h-1, h, dtype=np.float32), np.linspace(0, w-1, w, dtype=np.float32)) 
+
+	def get_pixel_normalized(self, ratio):
+		u = (self.u % ratio - (ratio - 1)/2) / self.focal
+		v = (self.v % ratio - (ratio - 1)/2) / self.focal
+		u = tf.expand_dims(tf.expand_dims(u, -1), 0) 
+		v = tf.expand_dims(tf.expand_dims(v, -1), 0) 
+		return tf.concat([u, v, tf.ones_like(u)], 3)
+
+	
+    def upsample_nn(self, x, ratio, method='NN'):
         s = tf.shape(x)
         h = s[1]
         w = s[2]
-        return tf.image.resize_nearest_neighbor(x, [h * ratio, w * ratio], align_corners=True)
+        if method == 'bilinear': 
+			return tf.image.resize_bilinear(x, [h * ratio, w * ratio], align_corners=True)
+		else:
+			return tf.image.resize_nearest_neighbor(x, [h * ratio, w * ratio], align_corners=True)
 
-    def downsample_nn(self, x, ratio):
+    def downsample_nn(self, x, ratio, method='NN'):
         s = tf.shape(x)
         h = tf.cast(s[1] / ratio, tf.int32)
         w = tf.cast(s[2] / ratio, tf.int32)
-        return tf.image.resize_nearest_neighbor(x, [h, w], align_corners=True)
+        if method == 'bilinear':
+			return tf.image.resize_bilinear(x, [h, w], align_corners=True)
+		else:
+			return tf.image.resize_nearest_neighbor(x, [h, w], align_corners=True)
 
     def get_depth(self, x):
         depth = self.max_depth * self.conv(x, 1, 3, 1, tf.nn.sigmoid, normalizer_fn=None)
@@ -107,6 +122,18 @@ class BtsModel(object):
         conv = self.conv(upsample, num_out_layers, kernel_size, 1, normalizer_fn=normalizer_fn)
         return conv
 
+    def compute_depth(self, plane_eq, upratio):
+		plane = self.upsample_nn(plane_eq, upratio)
+		plane_normal = tf.nn.l2_normalize(plane[:, :, :, 0:3], axis=3)
+		plane_dist = plane[:, :, :, 3:4]
+		plane_eq = tf.concat([plane_normal, plane_dist], 3)
+		pixel_vector = self.get_pixel_normalized(upratio)
+		dem = tf.reduce_sum(plane_normal*pixel_vector, axis=3, keepdims=True)
+		depth = plane_dist / dem * tf.sqrt(tf.reduce_sum(pixel_vector**2, axis=3, keepdims=True))
+		depth = tf.abs(depth)
+		return plane_eq, depth
+        
+    
     @slim.add_arg_scope
     def denseconv(self, x, num_filters, kernel_size, stride=1, dilation_rate=1, dropout_rate=None, scope=None):
         with tf.variable_scope(scope, 'xx', [x]) as sc:
@@ -162,9 +189,10 @@ class BtsModel(object):
         return net
 
     def custom_sigmoid(self, x):
-        return tf.concat([tf.nn.tanh(x[:, :, :, 0:2]), tf.expand_dims(tf.nn.sigmoid(x[:, :, :, 2]), 3),
-                          tf.expand_dims(tf.nn.sigmoid(x[:, :, :, 3]) * self.max_depth, 3)], axis=3)
+        return tf.concat([tf.nn.tanh(x[:, :, :, 0:2]), tf.nn.sigmoid(x[:, :, :, 2:3]),
+						  tf.nn.sigmoid(x[:, :, :, 3:4]], axis=3)
 
+                        
     def densenet(self, inputs, reduction=None, growth_rate=None, num_filters=None, num_layers=None, dropout_rate=None,
                  is_training=True, reuse=None, scope=None):
 
@@ -264,11 +292,8 @@ class BtsModel(object):
             daspp_feat = conv(concat4_daspp, num_filters / 2, 3, 1)
 
             rconv1_8x8 = self.reduction_1x1(daspp_feat, num_filters / 2)
-            plane_normal_8x8 = tf.nn.l2_normalize(rconv1_8x8[:, :, :, 0:3], axis=3)
-            plane_dist_8x8 = rconv1_8x8[:, :, :, 3]
-            plane_eq_8x8 = tf.concat([plane_normal_8x8, tf.expand_dims(plane_dist_8x8, 3)], 3)
-            depth_8x8 = compute_depth_module.compute_depth(plane_eq_8x8, upratio=8, focal=self.focal)
-            depth_8x8_scaled = tf.expand_dims(depth_8x8, 3) / self.max_depth
+            plane_8x8, depth_8x8 = self.compute_depth(rconv1_8x8, upratio=8)
+            depth_8x8_scaled = depth_8x8 / self.max_depth
             depth_8x8_scaled_ds = self.downsample_nn(depth_8x8_scaled, 4)
 
             num_filters = num_filters / 2
@@ -279,11 +304,8 @@ class BtsModel(object):
             iconv3 = conv(concat3, num_filters, 3, 1)
 
             rconv1_4x4 = self.reduction_1x1(iconv3, num_filters / 2)
-            plane_normal_4x4 = tf.nn.l2_normalize(rconv1_4x4[:, :, :, 0:3], axis=3)
-            plane_dist_4x4 = rconv1_4x4[:, :, :, 3]
-            plane_eq_4x4 = tf.concat([plane_normal_4x4, tf.expand_dims(plane_dist_4x4, 3)], 3)
-            depth_4x4 = compute_depth_module.compute_depth(plane_eq_4x4, upratio=4, focal=self.focal)
-            depth_4x4_scaled = tf.expand_dims(depth_4x4, 3) / self.max_depth
+            plane_4x4, depth_4x4 = self.compute_depth(rconv1_4x4, upratio=4)
+			depth_4x4_scaled = depth_4x4 / self.max_depth
             depth_4x4_scaled_ds = self.downsample_nn(depth_4x4_scaled, 2)
 
             num_filters = num_filters / 2
@@ -294,11 +316,8 @@ class BtsModel(object):
             iconv2 = conv(concat2, num_filters, 3, 1)
 
             rconv1_2x2 = self.reduction_1x1(iconv2, num_filters / 2)
-            plane_normal_2x2 = tf.nn.l2_normalize(rconv1_2x2[:, :, :, 0:3], axis=3)
-            plane_dist_2x2 = rconv1_2x2[:, :, :, 3]
-            plane_eq_2x2 = tf.concat([plane_normal_2x2, tf.expand_dims(plane_dist_2x2, 3)], 3)
-            depth_2x2 = compute_depth_module.compute_depth(plane_eq_2x2, upratio=2, focal=self.focal)
-            depth_2x2_scaled = tf.expand_dims(depth_2x2, 3) / self.max_depth
+            plane_2x2, depth_2x2 = self.compute_depth(rconv1_2x2, upratio=2)
+			depth_2x2_scaled = depth_2x2 / self.max_depth
 
             num_filters = num_filters / 2
 
@@ -366,11 +385,8 @@ class BtsModel(object):
     def build_losses(self):
         with tf.variable_scope('losses', reuse=self.reuse_variables):
 
-            if self.params.dataset == 'nyu':
-                self.mask = self.depth_gt > 0.1
-            else:
-                self.mask = self.depth_gt > 1.0
-
+            self.mask = self.depth_gt > self.gt_th[self.params.dataset]
+            
             depth_gt_masked = tf.boolean_mask(self.depth_gt, self.mask)
             depth_est_masked = tf.boolean_mask(self.depth_est, self.mask)
 
