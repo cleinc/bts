@@ -2,8 +2,8 @@
 --data_path ../dataset/nyu_depth_v2/official_splits/test/
 --dataset nyu
 --filenames_file ./train_test_inputs/nyudepthv2_test_files_with_gt.txt
---model_name bts_nyu
---checkpoint_path ./models/bts_nyu/model
+--model_name bts_nyu_v2
+--checkpoint_path ./models/bts_nyu_v2/model
 --input_height 480
 --input_width 640
 --max_depth 10

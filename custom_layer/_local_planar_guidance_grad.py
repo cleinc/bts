@@ -17,17 +17,17 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
-compute_depth_grad_module = tf.load_op_library('custom_layer/build/libcompute_depth.so')
+lpg = tf.load_op_library('custom_layer/build/liblpg.so')
 
-@ops.RegisterGradient("ComputeDepth")
-def _compute_depth_grad_cc(op, depth_grad):
+@ops.RegisterGradient("LocalPlanarGuidance")
+def _local_planar_guidance_grad_cc(op, depth_grad):
     """
-    The gradient for `compute_depth` using the operation implemented in C++.
+    The gradient for `local_planar_guidance` using the operation implemented in C++.
 
-    :param op: `compute_depth` `Operation` that we are differentiating, which we can use
+    :param op: `local_planar_guidance` `Operation` that we are differentiating, which we can use
         to find the inputs and outputs of the original op.
-    :param grad: gradient with respect to the output of the `compute_depth` op.
-    :return: gradients with respect to the input of `compute_depth`.
+    :param grad: gradient with respect to the output of the `local_planar_guidance` op.
+    :return: gradients with respect to the input of `local_planar_guidance`.
     """
     
-    return compute_depth_grad_module.compute_depth_grad(depth_grad, op.inputs[0], op.inputs[1])
+    return lpg.local_planar_guidance_grad(depth_grad, op.inputs[0], op.inputs[1])

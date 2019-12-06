@@ -22,11 +22,13 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
 
+from resnet_v1 import *
+
 sys.path.append("./custom_layer/")
 
-import _compute_depth_grad
+import _local_planar_guidance_grad
 
-compute_depth_module = tf.load_op_library('custom_layer/build/libcompute_depth.so')
+lpg = tf.load_op_library('custom_layer/build/liblpg.so')
 
 bts_parameters = namedtuple('parameters', 'encoder, '
                                           'height, width, '
@@ -67,22 +69,17 @@ class BtsModel(object):
         h = s[1]
         w = s[2]
         return tf.image.resize_nearest_neighbor(x, [h * ratio, w * ratio], align_corners=True)
-
+    
     def downsample_nn(self, x, ratio):
         s = tf.shape(x)
         h = tf.cast(s[1] / ratio, tf.int32)
         w = tf.cast(s[2] / ratio, tf.int32)
         return tf.image.resize_nearest_neighbor(x, [h, w], align_corners=True)
-
-    def get_depth(self, x):
-        depth = self.max_depth * self.conv(x, 1, 3, 1, tf.nn.sigmoid, normalizer_fn=None)
-        return depth
-
+    
     def conv(self, x, num_out_layers, kernel_size, stride, activation_fn=tf.nn.elu, normalizer_fn=None):
         p = np.floor((kernel_size - 1) / 2).astype(np.int32)
         p_x = tf.pad(x, [[0, 0], [p, p], [p, p], [0, 0]])
-        return slim.conv2d(p_x, num_out_layers, kernel_size, stride, 'VALID', activation_fn=activation_fn,
-                           normalizer_fn=normalizer_fn)
+        return slim.conv2d(p_x, num_out_layers, kernel_size, stride, 'VALID', activation_fn=activation_fn, normalizer_fn=normalizer_fn)
 
     def atrous_conv(self, x, num_out_layers, kernel_size, rate, apply_bn_first=True):
         pk = np.floor((kernel_size - 1) / 2).astype(np.int32)
@@ -102,9 +99,9 @@ class BtsModel(object):
 
         return out
 
-    def upconv(self, x, num_out_layers, kernel_size, scale, normalizer_fn=None):
+    def upconv(self, x, num_out_layers, kernel_size, scale, activation_fn=tf.nn.elu, normalizer_fn=None):
         upsample = self.upsample_nn(x, scale)
-        conv = self.conv(upsample, num_out_layers, kernel_size, 1, normalizer_fn=normalizer_fn)
+        conv = self.conv(upsample, num_out_layers, kernel_size, 1, activation_fn=activation_fn, normalizer_fn=normalizer_fn)
         return conv
 
     @slim.add_arg_scope
@@ -147,24 +144,38 @@ class BtsModel(object):
             return out, num_filters
 
     @slim.add_arg_scope
-    def reduction_1x1(self, net, num_filters):
+    def reduction_1x1(self, net, num_filters, is_final=False):
         while num_filters >= 4:
             if num_filters < 8:
-                num_filters = 4
-                net = self.conv(net, num_filters, 1, 1, activation_fn=self.custom_sigmoid)
+                if is_final:
+                    net = self.conv(net, 1, 1, 1, activation_fn=tf.nn.sigmoid)
+                else:
+                    net = self.conv(net, 3, 1, 1, activation_fn=None)
+                    theta = tf.nn.sigmoid(net[:, :, :, 0]) * 3.1415926535 / 6
+                    phi = tf.nn.sigmoid(net[:, :, :, 1]) * 3.1415926535 * 2
+                    dist = tf.nn.sigmoid(net[:, :, :, 2]) * self.max_depth
+                    n1 = tf.expand_dims(tf.multiply(tf.math.sin(theta), tf.math.cos(phi)), 3)
+                    n2 = tf.expand_dims(tf.multiply(tf.math.sin(theta), tf.math.sin(phi)), 3)
+                    n3 = tf.expand_dims(tf.math.cos(theta), 3)
+                    n4 = tf.expand_dims(dist, 3)
+                    net = tf.concat([n1, n2, n3, n4], axis=3)
                 break
             else:
                 net = self.conv(net, num_filters, 1, 1)
 
             num_filters = num_filters / 2
 
-        assert num_filters is 4
         return net
 
-    def custom_sigmoid(self, x):
-        return tf.concat([tf.nn.tanh(x[:, :, :, 0:2]), tf.expand_dims(tf.nn.sigmoid(x[:, :, :, 2]), 3),
-                          tf.expand_dims(tf.nn.sigmoid(x[:, :, :, 3]) * self.max_depth, 3)], axis=3)
-
+    def get_depth(self, x):
+        depth = self.max_depth * self.conv(x, 1, 3, 1, tf.nn.sigmoid, normalizer_fn=None)
+        if self.params.dataset == 'kitti':
+            focal_expanded = tf.expand_dims(self.focal, 1)
+            focal_expanded = tf.expand_dims(focal_expanded, 1)
+            focal_expanded = tf.expand_dims(focal_expanded, 1)
+            depth = depth * focal_expanded / 715.0873 # Average focal length in KITTI Eigen training set
+        return depth
+    
     def densenet(self, inputs, reduction=None, growth_rate=None, num_filters=None, num_layers=None, dropout_rate=None,
                  is_training=True, reuse=None, scope=None):
 
@@ -263,11 +274,11 @@ class BtsModel(object):
             concat4_daspp = tf.concat([iconv4, daspp_3, daspp_6, daspp_12, daspp_18, daspp_24], 3)
             daspp_feat = conv(concat4_daspp, num_filters / 2, 3, 1)
 
-            rconv1_8x8 = self.reduction_1x1(daspp_feat, num_filters / 2)
-            plane_normal_8x8 = tf.nn.l2_normalize(rconv1_8x8[:, :, :, 0:3], axis=3)
-            plane_dist_8x8 = rconv1_8x8[:, :, :, 3]
+            plane_eq_8x8 = self.reduction_1x1(daspp_feat, num_filters / 2)
+            plane_normal_8x8 = tf.nn.l2_normalize(plane_eq_8x8[:, :, :, 0:3], axis=3)
+            plane_dist_8x8 = plane_eq_8x8[:, :, :, 3]
             plane_eq_8x8 = tf.concat([plane_normal_8x8, tf.expand_dims(plane_dist_8x8, 3)], 3)
-            depth_8x8 = compute_depth_module.compute_depth(plane_eq_8x8, upratio=8, focal=self.focal)
+            depth_8x8 = lpg.local_planar_guidance(plane_eq_8x8, upratio=8, focal=self.focal)
             depth_8x8_scaled = tf.expand_dims(depth_8x8, 3) / self.max_depth
             depth_8x8_scaled_ds = self.downsample_nn(depth_8x8_scaled, 4)
 
@@ -278,11 +289,11 @@ class BtsModel(object):
             concat3 = tf.concat([upconv3, skips[1], depth_8x8_scaled_ds], 3)
             iconv3 = conv(concat3, num_filters, 3, 1)
 
-            rconv1_4x4 = self.reduction_1x1(iconv3, num_filters / 2)
-            plane_normal_4x4 = tf.nn.l2_normalize(rconv1_4x4[:, :, :, 0:3], axis=3)
-            plane_dist_4x4 = rconv1_4x4[:, :, :, 3]
+            plane_eq_4x4 = self.reduction_1x1(iconv3, num_filters / 2)
+            plane_normal_4x4 = tf.nn.l2_normalize(plane_eq_4x4[:, :, :, 0:3], axis=3)
+            plane_dist_4x4 = plane_eq_4x4[:, :, :, 3]
             plane_eq_4x4 = tf.concat([plane_normal_4x4, tf.expand_dims(plane_dist_4x4, 3)], 3)
-            depth_4x4 = compute_depth_module.compute_depth(plane_eq_4x4, upratio=4, focal=self.focal)
+            depth_4x4 = lpg.local_planar_guidance(plane_eq_4x4, upratio=4, focal=self.focal)
             depth_4x4_scaled = tf.expand_dims(depth_4x4, 3) / self.max_depth
             depth_4x4_scaled_ds = self.downsample_nn(depth_4x4_scaled, 2)
 
@@ -293,23 +304,25 @@ class BtsModel(object):
             concat2 = tf.concat([upconv2, skips[0], depth_4x4_scaled_ds], 3)
             iconv2 = conv(concat2, num_filters, 3, 1)
 
-            rconv1_2x2 = self.reduction_1x1(iconv2, num_filters / 2)
-            plane_normal_2x2 = tf.nn.l2_normalize(rconv1_2x2[:, :, :, 0:3], axis=3)
-            plane_dist_2x2 = rconv1_2x2[:, :, :, 3]
+            plane_eq_2x2 = self.reduction_1x1(iconv2, num_filters / 2)
+            plane_normal_2x2 = tf.nn.l2_normalize(plane_eq_2x2[:, :, :, 0:3], axis=3)
+            plane_dist_2x2 = plane_eq_2x2[:, :, :, 3]
             plane_eq_2x2 = tf.concat([plane_normal_2x2, tf.expand_dims(plane_dist_2x2, 3)], 3)
-            depth_2x2 = compute_depth_module.compute_depth(plane_eq_2x2, upratio=2, focal=self.focal)
+            depth_2x2 = lpg.local_planar_guidance(plane_eq_2x2, upratio=2, focal=self.focal)
             depth_2x2_scaled = tf.expand_dims(depth_2x2, 3) / self.max_depth
 
             num_filters = num_filters / 2
 
             upconv1 = upconv(iconv2, num_filters, 3, 2)  # H
-            concat1 = tf.concat([upconv1, depth_2x2_scaled, depth_4x4_scaled, depth_8x8_scaled], 3)
+            reduc1x1 = self.reduction_1x1(upconv1, num_filters, is_final=True)
+            concat1 = tf.concat([upconv1, reduc1x1, depth_2x2_scaled, depth_4x4_scaled, depth_8x8_scaled], 3)
             iconv1 = conv(concat1, num_filters, 3, 1)
 
             self.depth_est = self.get_depth(iconv1)
-            self.depth_2x2 = depth_2x2_scaled
-            self.depth_4x4 = depth_4x4_scaled
-            self.depth_8x8 = depth_8x8_scaled
+            self.lpg2x2 = depth_2x2_scaled
+            self.lpg4x4 = depth_4x4_scaled
+            self.lpg8x8 = depth_8x8_scaled
+            self.reduc1x1 = reduc1x1
 
             print("==================================")
             print(" upconv5 in/out: {} / {}".format(dense_features.shape[-1], upconv5.shape[-1]))
@@ -317,20 +330,71 @@ class BtsModel(object):
             print(" upconv4 in/out: {} / {}".format(iconv5.shape[-1], upconv4.shape[-1]))
             print("  iconv4 in/out: {} / {}".format(concat4.shape[-1], iconv4.shape[-1]))
             print("    aspp in/out: {} / {}".format(concat4_daspp.shape[-1], daspp_feat.shape[-1]))
-            print("reduc8x8 in/out: {} / {}".format(daspp_feat.shape[-1], rconv1_8x8.shape[-1]))
+            print("reduc8x8 in/out: {} / {}".format(daspp_feat.shape[-1], plane_eq_8x8.shape[-1]))
             print("  lpg8x8 in/out: {} / {}".format(plane_eq_8x8.shape[-1], 1))
             print(" upconv3 in/out: {} / {}".format(daspp_feat.shape[-1], upconv3.shape[-1]))
             print("  iconv3 in/out: {} / {}".format(concat3.shape[-1], iconv3.shape[-1]))
-            print("reduc4x4 in/out: {} / {}".format(iconv3.shape[-1], rconv1_4x4.shape[-1]))
+            print("reduc4x4 in/out: {} / {}".format(iconv3.shape[-1], plane_eq_4x4.shape[-1]))
             print("  lpg4x4 in/out: {} / {}".format(plane_eq_4x4.shape[-1], 1))
             print(" upconv2 in/out: {} / {}".format(iconv3.shape[-1], upconv2.shape[-1]))
             print("  iconv2 in/out: {} / {}".format(concat2.shape[-1], iconv2.shape[-1]))
-            print("reduc2x2 in/out: {} / {}".format(iconv2.shape[-1], rconv1_2x2.shape[-1]))
+            print("reduc2x2 in/out: {} / {}".format(iconv2.shape[-1], plane_eq_2x2.shape[-1]))
             print("  lpg2x2 in/out: {} / {}".format(plane_eq_2x2.shape[-1], 1))
             print(" upconv1 in/out: {} / {}".format(iconv2.shape[-1], upconv1.shape[-1]))
+            print("reduc1x1 in/out: {} / {}".format(upconv1.shape[-1], reduc1x1.shape[-1]))
             print("  iconv1 in/out: {} / {}".format(concat1.shape[-1], iconv1.shape[-1]))
             print("   depth in/out: {} / {}".format(iconv1.shape[-1], self.depth_est.shape[-1]))
             print("==================================")
+
+    def build_resnet101_bts(self, net_input, reuse):
+        batch_norm_params = {
+            'is_training': False,
+            'decay': 0.997,
+            'epsilon': 1e-5,
+            'scale': True,
+            'fused': True,  # Use fused batch norm if possible.
+        }
+        with tf.variable_scope('encoder'):
+            with slim.arg_scope([slim.conv2d],
+                                weights_regularizer=slim.l2_regularizer(1e-4),
+                                weights_initializer=slim.variance_scaling_initializer(),
+                                activation_fn=tf.nn.relu,
+                                normalizer_fn=slim.batch_norm,
+                                normalizer_params=batch_norm_params),\
+                 slim.arg_scope([slim.batch_norm], **batch_norm_params),\
+                 slim.arg_scope([slim.max_pool2d], padding='SAME'):
+
+                dense_features, skips, endpoints = resnet_v1_101(net_input, global_pool=False, spatial_squeeze=False,
+                                                                 is_training=self.is_training, reuse=reuse, scope='resnet101')
+
+        with tf.variable_scope('decoder'):
+            with slim.arg_scope([slim.conv2d, slim.conv2d_transpose], activation_fn=tf.nn.elu):
+                self.bts(dense_features, skips, num_filters=512)
+
+    def build_resnet50_bts(self, net_input, reuse):
+        batch_norm_params = {
+            'is_training': False,
+            'decay': 0.997,
+            'epsilon': 1e-5,
+            'scale': True,
+            'fused': True,  # Use fused batch norm if possible.
+        }
+        with tf.variable_scope('encoder'):
+            with slim.arg_scope([slim.conv2d],
+                                weights_regularizer=slim.l2_regularizer(1e-4),
+                                weights_initializer=slim.variance_scaling_initializer(),
+                                activation_fn=tf.nn.relu,
+                                normalizer_fn=slim.batch_norm,
+                                normalizer_params=batch_norm_params), \
+                 slim.arg_scope([slim.batch_norm], **batch_norm_params), \
+                 slim.arg_scope([slim.max_pool2d], padding='SAME'):
+
+                dense_features, skips, endpoints = resnet_v1_50(net_input, global_pool=False, spatial_squeeze=False,
+                                                                is_training=self.is_training, reuse=reuse, scope='resnet50')
+
+        with tf.variable_scope('decoder'):
+            with slim.arg_scope([slim.conv2d, slim.conv2d_transpose], activation_fn=tf.nn.elu):
+                self.bts(dense_features, skips, num_filters=256)
 
     def build_densenet121_bts(self, net_input, reuse):
         with tf.variable_scope('encoder'):
@@ -360,6 +424,10 @@ class BtsModel(object):
             elif self.params.encoder == 'densenet121_bts':
                 self.num_filters = 64
                 self.build_densenet121_bts(net_input=net_input, reuse=reuse)
+            elif self.params.encoder == 'resnet101_bts':
+                self.build_resnet101_bts(net_input=net_input, reuse=reuse)
+            elif self.params.encoder == 'resnet50_bts':
+                self.build_resnet50_bts(net_input=net_input, reuse=reuse)
             else:
                 return None
 
@@ -382,14 +450,11 @@ class BtsModel(object):
     def build_summaries(self):
         with tf.device('/cpu:0'):
             tf.summary.scalar('silog_loss', self.silog_loss, collections=self.model_collection)
-
             depth_gt = tf.where(self.depth_gt < 1e-3, self.depth_gt * 0 + 1e3, self.depth_gt)
             tf.summary.image('depth_gt', 1 / depth_gt, max_outputs=4, collections=self.model_collection)
             tf.summary.image('depth_est', 1 / self.depth_est, max_outputs=4, collections=self.model_collection)
-            tf.summary.image('depth_est_cropped',
-                             1 / self.depth_est[:, 8:self.params.height - 8, 8:self.params.width - 8, :], max_outputs=4,
-                             collections=self.model_collection)
-            tf.summary.image('depth_est_2x2', 1 / self.depth_2x2, max_outputs=4, collections=self.model_collection)
-            tf.summary.image('depth_est_4x4', 1 / self.depth_4x4, max_outputs=4, collections=self.model_collection)
-            tf.summary.image('depth_est_8x8', 1 / self.depth_8x8, max_outputs=4, collections=self.model_collection)
-            tf.summary.image('image', self.input_image[:, :, :, ::-1], max_outputs=4, collections=self.model_collection)
+            tf.summary.image('reduc1x1', 1 / self.reduc1x1, max_outputs=4, collections=self.model_collection)
+            tf.summary.image('lpg2x2', 1 / self.lpg2x2, max_outputs=4, collections=self.model_collection)
+            tf.summary.image('lpg4x4', 1 / self.lpg4x4, max_outputs=4, collections=self.model_collection)
+            tf.summary.image('lpg8x8', 1 / self.lpg8x8, max_outputs=4, collections=self.model_collection)
+            tf.summary.image('image', self.input_image, max_outputs=4, collections=self.model_collection)

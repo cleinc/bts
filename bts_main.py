@@ -40,9 +40,9 @@ parser = argparse.ArgumentParser(description='BTS TensorFlow implementation.', f
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
 parser.add_argument('--mode',                      type=str,   help='train or test', default='train')
-parser.add_argument('--model_name',                type=str,   help='model name', default='bts_eigen')
-parser.add_argument('--encoder',                   type=str,   help='type of encoder, desenet121_bts or densenet161_bts', default='densenet161_bts')
-parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti or nyu', default='kitti')
+parser.add_argument('--model_name',                type=str,   help='model name', default='bts_eigen_v2')
+parser.add_argument('--encoder',                   type=str,   help='type of encoder, desenet121_bts, densenet161_bts, resnet101_bts or resnet50_bts', default='densenet161_bts')
+parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti or nyu', default='nyu')
 parser.add_argument('--data_path',                 type=str,   help='path to the data', required=False)
 parser.add_argument('--gt_path',                   type=str,   help='path to the groundtruth data', required=False)
 parser.add_argument('--filenames_file',            type=str,   help='path to the filenames text file', required=False)
@@ -52,12 +52,12 @@ parser.add_argument('--batch_size',                type=int,   help='batch size'
 parser.add_argument('--num_epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--end_learning_rate',         type=float, help='end learning rate', default=-1)
-parser.add_argument('--max_depth',                 type=float, help='maximum depth in estimation', default=80)
+parser.add_argument('--max_depth',                 type=float, help='maximum depth in estimation', default=10)
 parser.add_argument('--do_random_rotate',                      help='if set, will perform random rotation for augmentation', action='store_true')
-parser.add_argument('--degree',                    type=float, help='random rotation maximum degree', default=5.0)
+parser.add_argument('--degree',                    type=float, help='random rotation maximum degree', default=2.5)
 parser.add_argument('--do_kb_crop',                            help='if set, crop input images as kitti benchmark images', action='store_true')
 parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=1)
-parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
+parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=1)
 parser.add_argument('--log_directory',             type=str,   help='directory to save checkpoints and summaries', default='')
 parser.add_argument('--checkpoint_path',           type=str,   help='path to a checkpoint to load', default='')
 parser.add_argument('--pretrained_model',          type=str,   help='path to a pretrained model checkpoint to load', default='')
@@ -92,9 +92,9 @@ def get_num_lines(file_path):
     return len(lines)
 
 
-def get_tensors_in_checkpoint_file(file_name,all_tensors=True,tensor_name=None):
-    varlist=[]
-    var_value =[]
+def get_tensors_in_checkpoint_file(file_name, all_tensors=True, tensor_name=None):
+    varlist = []
+    var_value = []
     reader = pywrap_tensorflow.NewCheckpointReader(file_name)
     if all_tensors:
       var_to_shape_map = reader.get_variable_to_shape_map()
@@ -137,7 +137,7 @@ def train(params):
 
         end_learning_rate = args.end_learning_rate if args.end_learning_rate != -1 else start_learning_rate * 0.1
         learning_rate = tf.train.polynomial_decay(start_learning_rate, global_step, num_total_steps, end_learning_rate, 0.9)
-    
+
         opt_step = tf.train.AdamOptimizer(learning_rate, epsilon=1e-3)
 
         print("Total number of samples: {}".format(num_training_samples))
@@ -174,12 +174,21 @@ def train(params):
                     
                     if args.fix_first_conv_blocks or args.fix_first_conv_block:
                         trainable_vars = tf.trainable_variables()
-                        if args.fix_first_conv_blocks:
-                            g_vars = [var for var in
-                                      trainable_vars  if ('conv1' or 'dense_block1' or 'dense_block2' or 'transition_block1' or 'transition_block2') not in var.name]
+                        if args.encoder == 'resnet101_bts' or args.encoder == 'resnet50_bts':
+                            first_conv_name = args.encoder.replace('_bts', '') + '/conv1'
+                            if args.fix_first_conv_blocks:
+                                g_vars = [var for var in
+                                          trainable_vars if (first_conv_name or 'block1' or 'block2') not in var.name]
+                            else:
+                                g_vars = [var for var in
+                                          trainable_vars if (first_conv_name or 'block1') not in var.name]
                         else:
-                            g_vars = [var for var in
-                                      trainable_vars if ('dense_block1' or 'transition_block1') not in var.name]
+                            if args.fix_first_conv_blocks:
+                                g_vars = [var for var in
+                                          trainable_vars if ('conv1' or 'dense_block1' or 'dense_block2' or 'transition_block1' or 'transition_block2') not in var.name]
+                            else:
+                                g_vars = [var for var in
+                                          trainable_vars if ('dense_block1' or 'transition_block1') not in var.name]
                     else:
                         g_vars = None
                     
@@ -283,6 +292,13 @@ def main(_):
     if args.mode == 'train':
         model_filename = args.model_name + '.py'
         command = 'mkdir ' + args.log_directory + '/' + args.model_name
+        os.system(command)
+
+        custom_layer_path = args.log_directory + '/' + args.model_name + '/' + 'custom_layer'
+        command = 'mkdir ' + custom_layer_path
+        os.system(command)
+        
+        command = 'cp ' + './custom_layer/* ' + custom_layer_path + '/.'
         os.system(command)
 
         args_out_path = args.log_directory + '/' + args.model_name + '/' + sys.argv[1]

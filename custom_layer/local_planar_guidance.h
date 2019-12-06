@@ -20,7 +20,7 @@
 #define COMPUTE_DEPTH_H_
 
 template <typename Device>
-struct ComputeDepthKernel
+struct LocalPlanarGuidanceKernel
 {
     void operator()(const Device& d,
                     const int batch_size, 
@@ -34,7 +34,7 @@ struct ComputeDepthKernel
 };
 
 template <typename Device>
-struct ComputeDepthGradKernel
+struct LocalPlanarGuidanceGradKernel
 {
     void operator()(const Device& d,
                     const int batch_size, 
@@ -51,7 +51,7 @@ struct ComputeDepthGradKernel
 #if GOOGLE_CUDA
 namespace functor { // Trick for GPU implementation forward decralation
 template <typename Device>
-struct ComputeDepthKernel
+struct LocalPlanarGuidanceKernel
 {
     void operator()(const Device& d,
                     const int batch_size, 
@@ -65,7 +65,7 @@ struct ComputeDepthKernel
 };
 
 template <typename Device>
-struct ComputeDepthGradKernel
+struct LocalPlanarGuidanceGradKernel
 {
     void operator()(const Device& d,
                     const int batch_size, 

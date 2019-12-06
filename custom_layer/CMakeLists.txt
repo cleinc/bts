@@ -68,6 +68,6 @@ include_directories(${TF_INC})
 link_directories(${TF_LIB})
 include_directories("/usr/local/")
 
-cuda_add_library(compute_depth SHARED compute_depth.cu compute_depth.cc
+cuda_add_library(lpg SHARED local_planar_guidance.cu local_planar_guidance.cc
     OPTIONS -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC --expt-relaxed-constexpr)
-target_link_libraries(compute_depth ${TF_LINK_FLAGS})
+target_link_libraries(lpg ${TF_LINK_FLAGS})

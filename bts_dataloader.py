@@ -65,7 +65,6 @@ class BtsDataloader(object):
         else:
             image = tf.image.decode_png(tf.read_file(image_path))
 
-        width_o = tf.to_float(array_ops.shape(image)[1])
         image = tf.image.convert_image_dtype(image, tf.float32)
         focal = tf.string_to_number(split_line[2])
 
@@ -79,13 +78,14 @@ class BtsDataloader(object):
         return image, focal
 
     def test_preprocess(self, image, focal):
-        # To use with model pretrained on ImageNet
-        # Switch RGB to BGR order and scale to range [0,255]
-        image = image[:, :, ::-1] * 255.0
 
-        # Subtract ImageNet mean pixel values and scale
         image.set_shape([None, None, 3])
-        image = self.mean_image_subtraction(image, [103.939, 116.779, 123.68]) * 0.017
+        
+        image *= 255.0
+        image = self.mean_image_subtraction(image, [123.68, 116.78, 103.94])
+
+        if self.params.encoder == 'densenet161_bts' or self.params.encoder == 'densenet121_bts':
+            image *= 0.017
 
         return image, focal
 
@@ -143,17 +143,51 @@ class BtsDataloader(object):
         do_augment = tf.random_uniform([], 0, 1)
         image = tf.cond(do_augment > 0.5, lambda: self.augment_image(image), lambda: image)
 
-        # To use with model pretrained on ImageNet
-        # Switch RGB to BGR order and scale to range [0,255]
-        image = image[:, :, ::-1] * 255.0
-
         image.set_shape([self.params.height, self.params.width, 3])
         depth_gt.set_shape([self.params.height, self.params.width, 1])
+        
+        image *= 255.0
+        image = self.mean_image_subtraction(image, [123.68, 116.78, 103.94])
 
-        # Subtract ImageNet mean pixel values and scale
-        image = self.mean_image_subtraction(image, [103.939, 116.779, 123.68]) * 0.017
-
+        if self.params.encoder == 'densenet161_bts' or self.params.encoder == 'densenet121_bts':
+            image *= 0.017
+        
         return image, depth_gt, focal
+
+    def random_crop_fixed_size(self, image, depth_gt):
+        image_depth = tf.concat([image, depth_gt], 2)
+        image_depth_cropped = tf.random_crop(image_depth, [self.params.height, self.params.width, 4])
+
+        image_cropped = image_depth_cropped[:, :, 0:3]
+        depth_gt_cropped = tf.expand_dims(image_depth_cropped[:, :, 3], 2)
+
+        return image_cropped, depth_gt_cropped
+
+    def augment_image(self, image):
+        # gamma augmentation
+        gamma = tf.random_uniform([], 0.9, 1.1)
+        image_aug = image ** gamma
+
+        # brightness augmentation
+        if self.params.dataset == 'nyu':
+            brightness = tf.random_uniform([], 0.75, 1.25)
+        else:
+            brightness = tf.random_uniform([], 0.9, 1.1)
+        image_aug = image_aug * brightness
+
+        # color augmentation
+        colors = tf.random_uniform([3], 0.9, 1.1)
+        white = tf.ones([tf.shape(image)[0], tf.shape(image)[1]])
+        color_image = tf.stack([white * colors[i] for i in range(3)], axis=2)
+        image_aug *= color_image
+
+        # clip
+        if self.params.encoder == 'densenet161_bts' or self.params.encoder == 'densenet121_bts':
+            image_aug = tf.clip_by_value(image_aug,  0, 1)
+        else:
+            image_aug = tf.clip_by_value(image_aug, 0, 255)
+
+        return image_aug
 
     @staticmethod
     def mean_image_subtraction(image, means):
@@ -172,44 +206,14 @@ class BtsDataloader(object):
             than three or if the number of channels in `image` doesn't match the
             number of values in `means`.
         """
-        
+
         if image.get_shape().ndims != 3:
             raise ValueError('Input must be of size [height, width, C>0]')
         num_channels = image.get_shape().as_list()[-1]
         if len(means) != num_channels:
             raise ValueError('len(means) must match the number of channels')
-    
+
         channels = tf.split(axis=2, num_or_size_splits=num_channels, value=image)
         for i in range(num_channels):
             channels[i] -= means[i]
         return tf.concat(axis=2, values=channels)
-
-    def random_crop_fixed_size(self, image, depth_gt):
-        image_depth = tf.concat([image, depth_gt], 2)
-        image_depth_cropped = tf.random_crop(image_depth, [self.params.height, self.params.width, 4])
-
-        image_cropped = image_depth_cropped[:, :, 0:3]
-        depth_gt_cropped = tf.expand_dims(image_depth_cropped[:, :, 3], 2)
-
-        return image_cropped, depth_gt_cropped
-
-    @staticmethod
-    def augment_image(image):
-        # gamma augmentation
-        gamma = tf.random_uniform([], 0.9, 1.1)
-        image_aug = image ** gamma
-
-        # brightness augmentation
-        brightness = tf.random_uniform([], 0.75, 1.25)
-        image_aug = image_aug * brightness
-
-        # color augmentation
-        colors = tf.random_uniform([3], 0.9, 1.1)
-        white = tf.ones([tf.shape(image)[0], tf.shape(image)[1]])
-        color_image = tf.stack([white * colors[i] for i in range(3)], axis=2)
-        image_aug *= color_image
-
-        # clip
-        image_aug = tf.clip_by_value(image_aug,  0, 1)
-
-        return image_aug

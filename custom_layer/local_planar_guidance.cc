@@ -16,7 +16,7 @@
  along with this program. If not, see <http://www.gnu.org/licenses/>
 ***********************************************************************/
 
-#include "compute_depth.h"
+#include "local_planar_guidance.h"
 #include "tensorflow/core/framework/op_kernel.h"
 
 #include "tensorflow/core/framework/tensor_shape.h"
@@ -28,7 +28,7 @@ using namespace tensorflow;
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
 
-Status ComputeDepthShapeFn(shape_inference::InferenceContext* c)
+Status LocalPlanarGuidanceShapeFn(shape_inference::InferenceContext* c)
 {
     shape_inference::ShapeHandle input;
     TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 4, &input));
@@ -64,15 +64,15 @@ Status ComputeDepthShapeFn(shape_inference::InferenceContext* c)
     return Status::OK();
 }
 
-REGISTER_OP("ComputeDepth")
+REGISTER_OP("LocalPlanarGuidance")
 .Input("input: float")
 .Input("focal: float")
 .Output("depth: float")
 .Attr("upratio: int")
-.SetShapeFn(ComputeDepthShapeFn);
+.SetShapeFn(LocalPlanarGuidanceShapeFn);
 
 template <typename CPUDevice>
-void ComputeDepthKernel<CPUDevice>::operator()(const CPUDevice& d,
+void LocalPlanarGuidanceKernel<CPUDevice>::operator()(const CPUDevice& d,
                                                const int batch_size, 
                                                const int input_height, 
                                                const int input_width,
@@ -87,40 +87,39 @@ void ComputeDepthKernel<CPUDevice>::operator()(const CPUDevice& d,
         const int num_threads_row = depth_height / input_height;
         const int num_threads_col = depth_width / input_width;
 
-        const int col = index % depth_width;
-        const int row = ((index - col) / depth_width) % depth_height;
-        const int batch = ((index - row * depth_width - col) / (depth_width*depth_height)) % batch_size;
+        int batch = index;
+        const int col = (batch % depth_width);
+        batch /= depth_width;
+        const int row = (batch % depth_height);
+        batch /= depth_height;
 
         const int input_row = row / num_threads_row;
         const int input_col = col / num_threads_col;
 
         float fo = focal[batch];
 
-        float v = ((float)(row % num_threads_row) - (float)(num_threads_row - 1.0f) / 2.0f) / fo;
-        float u = ((float)(col % num_threads_col) - (float)(num_threads_col - 1.0f) / 2.0f) / fo;
-        unsigned int depth_index =
-            batch*depth_height*depth_width + row*depth_width + col;
+        float v = ((float)(row % num_threads_row) - (float)(num_threads_row - 1.0f) / 2.0f) / (float)num_threads_row;
+        float u = ((float)(col % num_threads_col) - (float)(num_threads_col - 1.0f) / 2.0f) / (float)num_threads_col;
 
-        unsigned int input_index =
-            batch*input_height*input_width*4 + input_row*input_width*4 + input_col*4;
+        unsigned int input_index = batch*input_height*input_width*4 + input_row*input_width*4 + input_col*4;
 
-        float a = input[input_index+0];
-        float b = input[input_index+1];
-        float c = input[input_index+2];
-        float d = input[input_index+3];
+        float n1 = input[input_index+0];
+        float n2 = input[input_index+1];
+        float n3 = input[input_index+2];
+        float n4 = input[input_index+3];
 
-        float numerator = d * sqrtf(u*u + v*v + 1.0f);
-        float denominator = (a*u + b*v + c);
-        depth[depth_index] = numerator / denominator;
+        float numerator = n4;
+        float denominator = (n1*u + n2*v + n3);
+        depth[index] = numerator / denominator;
     }
 }
 
 template <typename Device>
-struct ComputeDepthOp : public OpKernel {
+struct LocalPlanarGuidanceOp : public OpKernel {
     private:
         int upratio;
     public:
-        explicit ComputeDepthOp(OpKernelConstruction* context) : OpKernel(context) {
+        explicit LocalPlanarGuidanceOp(OpKernelConstruction* context) : OpKernel(context) {
             OP_REQUIRES_OK(context, context->GetAttr("upratio", &upratio));
         }
 
@@ -153,7 +152,7 @@ struct ComputeDepthOp : public OpKernel {
             Tensor* depth = NULL;
             OP_REQUIRES_OK(context, context->allocate_output(0, depth_shape, &depth));
 
-            ComputeDepthKernel<Device>()(context->eigen_device<Device>(),
+            LocalPlanarGuidanceKernel<Device>()(context->eigen_device<Device>(),
                                          batch_size,
                                          input_height,
                                          input_width,
@@ -164,11 +163,11 @@ struct ComputeDepthOp : public OpKernel {
                                          depth->flat<float>().data());
         }
 };
-REGISTER_KERNEL_BUILDER(Name("ComputeDepth").Device(DEVICE_CPU), ComputeDepthOp<CPUDevice>);
+REGISTER_KERNEL_BUILDER(Name("LocalPlanarGuidance").Device(DEVICE_CPU), LocalPlanarGuidanceOp<CPUDevice>);
 #ifdef GOOGLE_CUDA
 namespace functor {
 template <>                                                          
-void ComputeDepthKernel<GPUDevice>::operator()(const GPUDevice& d,
+void LocalPlanarGuidanceKernel<GPUDevice>::operator()(const GPUDevice& d,
                                                const int batch_size, 
                                                const int input_height, 
                                                const int input_width,
@@ -177,14 +176,14 @@ void ComputeDepthKernel<GPUDevice>::operator()(const GPUDevice& d,
                                                const float* input, 
                                                const float* focal, 
                                                float* depth);
-extern template struct ComputeDepthKernel<GPUDevice>;
+extern template struct LocalPlanarGuidanceKernel<GPUDevice>;
 }
 template <>
-struct ComputeDepthOp<GPUDevice> : public OpKernel {
+struct LocalPlanarGuidanceOp<GPUDevice> : public OpKernel {
     private:
         int upratio;
     public:
-        explicit ComputeDepthOp(OpKernelConstruction* context) : OpKernel(context) {
+        explicit LocalPlanarGuidanceOp(OpKernelConstruction* context) : OpKernel(context) {
             OP_REQUIRES_OK(context, context->GetAttr("upratio", &upratio));
         }
 
@@ -218,7 +217,7 @@ struct ComputeDepthOp<GPUDevice> : public OpKernel {
             Tensor* depth = NULL;
             OP_REQUIRES_OK(context, context->allocate_output(0, depth_shape, &depth));
 
-            functor::ComputeDepthKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
+            functor::LocalPlanarGuidanceKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
                                                      batch_size,
                                                      input_height,
                                                      input_width,
@@ -229,10 +228,10 @@ struct ComputeDepthOp<GPUDevice> : public OpKernel {
                                                      depth->flat<float>().data());
         }
 };
-REGISTER_KERNEL_BUILDER(Name("ComputeDepth").Device(DEVICE_GPU), ComputeDepthOp<GPUDevice>);
+REGISTER_KERNEL_BUILDER(Name("LocalPlanarGuidance").Device(DEVICE_GPU), LocalPlanarGuidanceOp<GPUDevice>);
 #endif
 
-REGISTER_OP("ComputeDepthGrad")
+REGISTER_OP("LocalPlanarGuidanceGrad")
 .Input("depth_grad: float")
 .Input("input: float")
 .Input("focal: float")
@@ -240,7 +239,7 @@ REGISTER_OP("ComputeDepthGrad")
 .Output("grad_focal: float");
 
 template <typename CPUDevice>
-void ComputeDepthGradKernel<CPUDevice>::operator() (const CPUDevice &d,
+void LocalPlanarGuidanceGradKernel<CPUDevice>::operator() (const CPUDevice &d,
                                                     const int batch_size, 
                                                     const int input_height, 
                                                     const int input_width,
@@ -256,54 +255,52 @@ void ComputeDepthGradKernel<CPUDevice>::operator() (const CPUDevice &d,
         unsigned int num_threads_row = depth_height / input_height;
         unsigned int num_threads_col = depth_width / input_width;
 
-        const int input_col = index % input_width;
-        const int input_row = ((index - input_col) / input_width) % input_height;
-        const int batch = ((index - input_row * input_width - input_col) / (input_width*input_height)) % batch_size;
+        int batch = index;
+        const int input_col = (batch % input_width);
+        batch /= input_width;
+        const int input_row = (batch % input_height);
+        batch /= input_height;
 
-        unsigned int input_index =
-            batch*input_height*input_width*4 + input_row*input_width*4 + input_col*4;
+        grad_input[index * 4 + 0] = 0.0f;
+        grad_input[index * 4 + 1] = 0.0f;
+        grad_input[index * 4 + 2] = 0.0f;
+        grad_input[index * 4 + 3] = 0.0f;
 
-        grad_input[input_index + 0] = 0.0f;
-        grad_input[input_index + 1] = 0.0f;
-        grad_input[input_index + 2] = 0.0f;
-        grad_input[input_index + 3] = 0.0f;
-
+        float n1 = input[index * 4 + 0];
+        float n2 = input[index * 4 + 1];
+        float n3 = input[index * 4 + 2];
+        float n4 = input[index * 4 + 3];
+        
         float fo = focal[batch];
 
         for(unsigned int r = 0; r < num_threads_row; ++r)
         {
-            for(unsigned int cc = 0; cc < num_threads_col; ++cc)
+            for(unsigned int c = 0; c < num_threads_col; ++c)
             {
-                unsigned int col = input_col * num_threads_col + cc;
+                unsigned int col = input_col * num_threads_col + c;
                 unsigned int row = input_row * num_threads_row + r;
 
-                float v = ((float)(row % num_threads_row) - (float)(num_threads_row - 1.0f) / 2.0f) / fo;
-                float u = ((float)(col % num_threads_col) - (float)(num_threads_col - 1.0f) / 2.0f) / fo;
+                float v = ((float)(row % num_threads_row) - (float)(num_threads_row - 1.0f) / 2.0f) / (float)num_threads_row;
+                float u = ((float)(col % num_threads_col) - (float)(num_threads_col - 1.0f) / 2.0f) / (float)num_threads_col;
 
-                unsigned int depth_index =
-                    batch*depth_height*depth_width + row*depth_width + col;
+                unsigned int depth_index = batch*depth_height*depth_width + row*depth_width + col;
 
-                float a = input[input_index + 0];
-                float b = input[input_index + 1];
-                float c = input[input_index + 2];
-                float d = input[input_index + 3];
-                float denominator = a*u + b*v + c;
+                float denominator = n1*u + n2*v + n3;
                 float denominator_sq = denominator*denominator;
-                float numerator = -d * sqrtf(u*u + v*v + 1.0f);
 
-		grad_input[input_index + 0] += depth_grad[depth_index] * numerator * u / denominator_sq;
-		grad_input[input_index + 1] += depth_grad[depth_index] * numerator * v / denominator_sq;
-		grad_input[input_index + 2] += depth_grad[depth_index] * numerator / denominator_sq;
-		grad_input[input_index + 3] += depth_grad[depth_index] * sqrtf(u*u + v*v + 1.0f) / denominator;
-	    }
+                grad_input[index * 4 + 0] += depth_grad[depth_index] * (-1.0f * u) / denominator_sq;
+                grad_input[index * 4 + 1] += depth_grad[depth_index] * (-1.0f * v) / denominator_sq;
+                grad_input[index * 4 + 2] += depth_grad[depth_index] * (-1.0f) / denominator_sq;
+                grad_input[index * 4 + 3] += depth_grad[depth_index] / denominator;
+            }
         }
     }
 }
 
 template <typename Device>
-class ComputeDepthGradOp : public OpKernel {
+class LocalPlanarGuidanceGradOp : public OpKernel {
     public:
-        explicit ComputeDepthGradOp(OpKernelConstruction* context) : OpKernel(context) {
+        explicit LocalPlanarGuidanceGradOp(OpKernelConstruction* context) : OpKernel(context) {
         }
 
         void Compute(OpKernelContext* context) override {
@@ -328,13 +325,14 @@ class ComputeDepthGradOp : public OpKernel {
 
             Tensor* grad_focal = NULL;
             OP_REQUIRES_OK(context, context->allocate_output(1, focal.shape(), &grad_focal));
-            *grad_focal = focal;
+            // *grad_focal = focal;
+            grad_focal = NULL;
 
             const int batch_size = input_shape.dim_size(0);
             const int input_height = input_shape.dim_size(1);
             const int input_width = input_shape.dim_size(2);
 
-            ComputeDepthGradKernel<Device>()(context->eigen_device<Device>(),
+            LocalPlanarGuidanceGradKernel<Device>()(context->eigen_device<Device>(),
                                              batch_size,
                                              input_height,
                                              input_width,
@@ -346,12 +344,12 @@ class ComputeDepthGradOp : public OpKernel {
                                              grad_input->flat<float>().data());
         }
 };
-REGISTER_KERNEL_BUILDER(Name("ComputeDepthGrad").Device(DEVICE_CPU), ComputeDepthGradOp<CPUDevice>);
+REGISTER_KERNEL_BUILDER(Name("LocalPlanarGuidanceGrad").Device(DEVICE_CPU), LocalPlanarGuidanceGradOp<CPUDevice>);
 
 #ifdef GOOGLE_CUDA
 namespace functor {
 template <>                                                          
-void ComputeDepthGradKernel<GPUDevice>::operator()(const GPUDevice& d,
+void LocalPlanarGuidanceGradKernel<GPUDevice>::operator()(const GPUDevice& d,
                                                    const int batch_size, 
                                                    const int input_height, 
                                                    const int input_width,
@@ -361,12 +359,12 @@ void ComputeDepthGradKernel<GPUDevice>::operator()(const GPUDevice& d,
                                                    const float* input, 
                                                    const float* focal, 
                                                    float* depth);
-extern template struct ComputeDepthGradKernel<GPUDevice>;
+extern template struct LocalPlanarGuidanceGradKernel<GPUDevice>;
 }
 template<>
-class ComputeDepthGradOp<GPUDevice> : public OpKernel {
+class LocalPlanarGuidanceGradOp<GPUDevice> : public OpKernel {
     public:
-        explicit ComputeDepthGradOp(OpKernelConstruction* context) : OpKernel(context) {
+        explicit LocalPlanarGuidanceGradOp(OpKernelConstruction* context) : OpKernel(context) {
         }
 
         void Compute(OpKernelContext* context) override {
@@ -403,7 +401,7 @@ class ComputeDepthGradOp<GPUDevice> : public OpKernel {
             const int input_height = input_shape.dim_size(1);
             const int input_width = input_shape.dim_size(2);
 
-            functor::ComputeDepthGradKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
+            functor::LocalPlanarGuidanceGradKernel<GPUDevice>()(context->eigen_device<GPUDevice>(),
                                                          batch_size,
                                                          input_height,
                                                          input_width,
@@ -415,5 +413,5 @@ class ComputeDepthGradOp<GPUDevice> : public OpKernel {
                                                          grad_input->flat<float>().data());
         }
 };
-REGISTER_KERNEL_BUILDER(Name("ComputeDepthGrad").Device(DEVICE_GPU), ComputeDepthGradOp<GPUDevice>);
+REGISTER_KERNEL_BUILDER(Name("LocalPlanarGuidanceGrad").Device(DEVICE_GPU), LocalPlanarGuidanceGradOp<GPUDevice>);
 #endif

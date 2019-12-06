@@ -10,9 +10,9 @@ From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimat
 
 ## Note
 This repository contains a Tensorflow implementation of BTS.\
-We tested this code under python 2.7 and 3.6, Tensorflow 1.14.0, CUDA 10.0 on Ubuntu 18.04. \
+We tested this code under python 2.7 and 3.6, Tensorflow 1.14, CUDA 10.0 on Ubuntu 18.04. \
 <strong>
-If you use TensorFlow built from source, it is okay with v1.14.0. \
+If you use TensorFlow built from source, it is okay with v1.14. \
 If you use TensorFlow installed using pip, it is okay up to v1.13.2. \
 Currently, if we use TensorFlow v1.14.0 installed using pip, we get segmentation fault.
 </strong>
@@ -28,10 +28,6 @@ $ mkdir build && cd build
 $ cmake -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda ..
 $ make -j
 ```
-<strong>
-For TensorFlow v1.14.0
-</strong>
-
 If you encounter an error "fatal error: third_party/gpus/cuda/include/cuda_fp16.h: No such file or directory",
 open "tensorflow/include/tensorflow/core/util/gpu_kernel_helper.h" and edit a line from
 ```
@@ -51,10 +47,6 @@ to
 #include "cuComplex.h"
 #include "cuda.h"
 ```
-
-<strong>
-For TensorFlow up to v1.13.2
-</strong>
 
 If you are testing with Tensorflow version lower than 1.14, please edit a line in "compute_depth.cu" from
 ```
@@ -81,9 +73,9 @@ $ python extract_official_train_test_set_from_mat.py nyu_depth_v2_labeled.mat sp
 $ cd ..
 $ mkdir models
 # Get BTS model trained with NYU Depth V2
-$ python utils/download_from_gdrive.py 1ipme-fkV4pIx87sOs31R9CD_Qg-85__h models/bts_nyu.zip
+$ python utils/download_from_gdrive.py 1goRL8aZw8bwZ8cZmne_cJTBnBOT6ii0S models/bts_nyu_v2.zip
 $ cd models
-$ unzip bts_nyu.zip
+$ unzip bts_nyu_v2.zip
 ```
 Once the preparation steps completed, you can test BTS using following commands.
 ```
@@ -95,7 +87,7 @@ This will save results to ./result_bts_nyu. With a single RTX 2080 Ti it takes a
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
 ```
-$ python eval_with_pngs.py --pred_path ./result_bts_nyu/raw/ --gt_path ../dataset/nyu_depth_v2/official_splits/test/ --dataset nyu --min_depth_eval 1e-3 --max_depth_eval 10 --eigen_crop
+$ python eval_with_pngs.py --pred_path ./result_bts_nyu_v2/raw/ --gt_path ../dataset/nyu_depth_v2/official_splits/test/ --dataset nyu --min_depth_eval 1e-3 --max_depth_eval 10 --eigen_crop
 ```
 
 You should see outputs like this:
@@ -106,7 +98,7 @@ GT files reading done
 0 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.882,   0.980,   0.996,   0.111,   0.060,   0.356,   0.141,  11.268,   0.047
+  0.886,   0.981,   0.995,   0.110,   0.059,   0.350,   0.138,  11.076,   0.046
 Done.
 ```
 
@@ -194,8 +186,8 @@ Once you have KITTI dataset and official ground truth depthmaps, you can test an
 ```
 # Get KITTI model trained with KITTI Eigen split
 $ cd ~/workspace/bts
-$ python utils/download_from_gdrive.py 1w4WbSQxui8GTDEsjX5xb4m7_-5yCznhQ models/bts_eigen.zip
-$ cd models && unzip bts_eigen.zip
+$ python utils/download_from_gdrive.py 1nhukEgl3YdTBKVzcjxUp6ZFMsKKM3xfg models/bts_eigen_v2.zip
+$ cd models && unzip bts_eigen_v2.zip
 ```
 Test and save results.
 ```
@@ -205,7 +197,7 @@ $ python bts_test.py arguments_test_eigen.txt
 This will save results to ./result_bts_eigen.
 Finally, we can evaluate the prediction results with
 ```
-$ python eval_with_pngs.py --pred_path ./result_bts_eigen/raw/ --gt_path ../dataset/kitti_dataset/data_depth_annotated/ --dataset kitti --min_depth_eval 1e-3 --max_depth_eval 80 --do_kb_crop --garg_crop
+$ python eval_with_pngs.py --pred_path ./result_bts_eigen_v2/raw/ --gt_path ../dataset/kitti_dataset/data_depth_annotated/ --dataset kitti --min_depth_eval 1e-3 --max_depth_eval 80 --do_kb_crop --garg_crop
 ```
 You should see outputs like this:
 ```
@@ -213,7 +205,7 @@ GT files reading done
 45 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.951,   0.993,   0.998,   0.064,   0.256,   2.796,   0.100,   9.175,   0.028
+  0.952,   0.993,   0.998,   0.063,   0.257,   2.791,   0.099,   9.168,   0.028
 Done.
 ```
 

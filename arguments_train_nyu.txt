@@ -14,7 +14,7 @@
 --input_width 544
 --max_depth 10
 --do_random_rotate
---degree 7.5
+--degree 2.5
 --log_directory ./models/
 --pretrained_model ./models/densenet161_imagenet/model
 --fix_first_conv_blocks
