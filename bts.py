@@ -190,7 +190,7 @@ class BtsModel(object):
 
     def custom_sigmoid(self, x):
         return tf.concat([tf.nn.tanh(x[:, :, :, 0:2]), tf.nn.sigmoid(x[:, :, :, 2:3]),
-						  tf.nn.sigmoid(x[:, :, :, 3:4]], axis=3)
+						  tf.nn.sigmoid(x[:, :, :, 3:4], axis=3)
 
                         
     def densenet(self, inputs, reduction=None, growth_rate=None, num_filters=None, num_layers=None, dropout_rate=None,
