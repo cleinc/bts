@@ -29,9 +29,6 @@ from tqdm import tqdm
 
 from bts_dataloader import *
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-
-
 def convert_arg_line_to_args(arg_line):
     for arg in arg_line.split():
         if not arg.strip():
