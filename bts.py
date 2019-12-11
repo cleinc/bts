@@ -151,12 +151,12 @@ class BtsModel(object):
                     net = self.conv(net, 1, 1, 1, activation_fn=tf.nn.sigmoid)
                 else:
                     net = self.conv(net, 3, 1, 1, activation_fn=None)
-                    theta = tf.nn.sigmoid(net[:, :, :, 0:1]) * 3.1415926535 / 6
-                    phi = tf.nn.sigmoid(net[:, :, :, 1:2]) * 3.1415926535 * 2
+                    theta = tf.nn.sigmoid(net[:, :, :, 0:1]) * np.pi / 6
+                    phi = tf.nn.sigmoid(net[:, :, :, 1:2]) * np.pi * 2
                     dist = tf.nn.sigmoid(net[:, :, :, 2:3]) * self.max_depth
-                    n1 = tf.math.sin(theta) * tf.math.cos(phi)
-                    n2 = tf.math.sin(theta) * tf.math.sin(phi)
-                    n3 = tf.math.cos(theta)
+                    n1 = tf.sin(theta) * tf.cos(phi)
+                    n2 = tf.sin(theta) * tf.sin(phi)
+                    n3 = tf.cos(theta)
                     n4 = dist
                     net = tf.concat([n1, n2, n3, n4], axis=3)
                 break
