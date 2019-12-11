@@ -151,13 +151,13 @@ class BtsModel(object):
                     net = self.conv(net, 1, 1, 1, activation_fn=tf.nn.sigmoid)
                 else:
                     net = self.conv(net, 3, 1, 1, activation_fn=None)
-                    theta = tf.nn.sigmoid(net[:, :, :, 0]) * 3.1415926535 / 6
-                    phi = tf.nn.sigmoid(net[:, :, :, 1]) * 3.1415926535 * 2
-                    dist = tf.nn.sigmoid(net[:, :, :, 2]) * self.max_depth
-                    n1 = tf.expand_dims(tf.multiply(tf.math.sin(theta), tf.math.cos(phi)), 3)
-                    n2 = tf.expand_dims(tf.multiply(tf.math.sin(theta), tf.math.sin(phi)), 3)
-                    n3 = tf.expand_dims(tf.math.cos(theta), 3)
-                    n4 = tf.expand_dims(dist, 3)
+                    theta = tf.nn.sigmoid(net[:, :, :, 0:1]) * 3.1415926535 / 6
+                    phi = tf.nn.sigmoid(net[:, :, :, 1:2]) * 3.1415926535 * 2
+                    dist = tf.nn.sigmoid(net[:, :, :, 2:3]) * self.max_depth
+                    n1 = tf.math.sin(theta) * tf.math.cos(phi)
+                    n2 = tf.math.sin(theta) * tf.math.sin(phi)
+                    n3 = tf.math.cos(theta)
+                    n4 = dist
                     net = tf.concat([n1, n2, n3, n4], axis=3)
                 break
             else:
@@ -170,11 +170,9 @@ class BtsModel(object):
     def get_depth(self, x):
         depth = self.max_depth * self.conv(x, 1, 3, 1, tf.nn.sigmoid, normalizer_fn=None)
         if self.params.dataset == 'kitti':
-            focal_expanded = tf.expand_dims(self.focal, 1)
-            focal_expanded = tf.expand_dims(focal_expanded, 1)
-            focal_expanded = tf.expand_dims(focal_expanded, 1)
             depth = depth * focal_expanded / 715.0873 # Average focal length in KITTI Eigen training set
         return depth
+        
     
     def densenet(self, inputs, reduction=None, growth_rate=None, num_filters=None, num_layers=None, dropout_rate=None,
                  is_training=True, reuse=None, scope=None):
@@ -276,8 +274,8 @@ class BtsModel(object):
 
             plane_eq_8x8 = self.reduction_1x1(daspp_feat, num_filters / 2)
             plane_normal_8x8 = tf.nn.l2_normalize(plane_eq_8x8[:, :, :, 0:3], axis=3)
-            plane_dist_8x8 = plane_eq_8x8[:, :, :, 3]
-            plane_eq_8x8 = tf.concat([plane_normal_8x8, tf.expand_dims(plane_dist_8x8, 3)], 3)
+            plane_dist_8x8 = plane_eq_8x8[:, :, :, 3:4]
+            plane_eq_8x8 = tf.concat([plane_normal_8x8, plane_dist_8x8], 3)
             depth_8x8 = lpg.local_planar_guidance(plane_eq_8x8, upratio=8, focal=self.focal)
             depth_8x8_scaled = tf.expand_dims(depth_8x8, 3) / self.max_depth
             depth_8x8_scaled_ds = self.downsample_nn(depth_8x8_scaled, 4)
@@ -291,8 +289,8 @@ class BtsModel(object):
 
             plane_eq_4x4 = self.reduction_1x1(iconv3, num_filters / 2)
             plane_normal_4x4 = tf.nn.l2_normalize(plane_eq_4x4[:, :, :, 0:3], axis=3)
-            plane_dist_4x4 = plane_eq_4x4[:, :, :, 3]
-            plane_eq_4x4 = tf.concat([plane_normal_4x4, tf.expand_dims(plane_dist_4x4, 3)], 3)
+            plane_dist_4x4 = plane_eq_4x4[:, :, :, 3:4]
+            plane_eq_4x4 = tf.concat([plane_normal_4x4, plane_dist_4x4], 3)
             depth_4x4 = lpg.local_planar_guidance(plane_eq_4x4, upratio=4, focal=self.focal)
             depth_4x4_scaled = tf.expand_dims(depth_4x4, 3) / self.max_depth
             depth_4x4_scaled_ds = self.downsample_nn(depth_4x4_scaled, 2)
@@ -306,8 +304,8 @@ class BtsModel(object):
 
             plane_eq_2x2 = self.reduction_1x1(iconv2, num_filters / 2)
             plane_normal_2x2 = tf.nn.l2_normalize(plane_eq_2x2[:, :, :, 0:3], axis=3)
-            plane_dist_2x2 = plane_eq_2x2[:, :, :, 3]
-            plane_eq_2x2 = tf.concat([plane_normal_2x2, tf.expand_dims(plane_dist_2x2, 3)], 3)
+            plane_dist_2x2 = plane_eq_2x2[:, :, :, 3:4]
+            plane_eq_2x2 = tf.concat([plane_normal_2x2, plane_dist_2x2], 3)
             depth_2x2 = lpg.local_planar_guidance(plane_eq_2x2, upratio=2, focal=self.focal)
             depth_2x2_scaled = tf.expand_dims(depth_2x2, 3) / self.max_depth
 
