@@ -169,6 +169,8 @@ class BtsModel(object):
 
     def get_depth(self, x):
         depth = self.max_depth * self.conv(x, 1, 3, 1, tf.nn.sigmoid, normalizer_fn=None)
+        b = 1 if self.params.batch_size is None else self.params.batch_size
+        focal_expanded = tf.reshape(self.focal, [b, 1, 1, 1])
         if self.params.dataset == 'kitti':
             depth = depth * focal_expanded / 715.0873 # Average focal length in KITTI Eigen training set
         return depth
