@@ -45,6 +45,19 @@ Follow instructions from one of the below implementations with your choice.
 ## PyTorch Implementation
 [[./pytorch/]](./pytorch/)
 
+## Live Demo
+Finally, we attach live 3d demo implementations for both of TensorFlow and Pytorch. \
+For best performance, get correct intrinsic values for your webcam and put them in bts_live_3d.py. \
+Sample Usage for PyTorch:
+```
+$ cd ~/workspace/bts/pytorch
+$ python bts_live_3d.py --model_name bts_nyu_v2_pytorch \
+--encoder densenet161_bts \
+--checkpoint_path ./models/bts_nyu_v2_pytorch/model \
+--max_depth 10 \
+--input_height 480 \
+--input_width 640
+```
 
 ## Citation
 If you find this work useful for your research, please consider citing our paper:
