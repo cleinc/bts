@@ -22,8 +22,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
 
-from resnet_v1 import *
-
 sys.path.append("./custom_layer/")
 
 import _local_planar_guidance_grad
