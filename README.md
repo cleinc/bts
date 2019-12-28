@@ -1,4 +1,7 @@
 # BTS
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/from-big-to-small-multi-scale-local-planar/monocular-depth-estimation-on-kitti-eigen)](https://paperswithcode.com/sota/monocular-depth-estimation-on-kitti-eigen?p=from-big-to-small-multi-scale-local-planar) 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/from-big-to-small-multi-scale-local-planar/monocular-depth-estimation-on-nyu-depth-v2)](https://paperswithcode.com/sota/monocular-depth-estimation-on-nyu-depth-v2?p=from-big-to-small-multi-scale-local-planar)
+
 From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation   
 [arXiv](https://arxiv.org/abs/1907.10326)  
 [Supplementary material](https://arxiv.org/src/1907.10326v4/anc/bts_sm.pdf) 
@@ -48,7 +51,7 @@ Follow instructions from one of the below implementations with your choice.
 ## Live Demo
 Finally, we attach live 3d demo implementations for both of TensorFlow and Pytorch. \
 For best performance, get correct intrinsic values for your webcam and put them in bts_live_3d.py. \
-Sample Usage for PyTorch:
+Sample usage for PyTorch:
 ```
 $ cd ~/workspace/bts/pytorch
 $ python bts_live_3d.py --model_name bts_nyu_v2_pytorch \
