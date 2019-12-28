@@ -26,9 +26,9 @@ def run_eval():
               'bts_eval.py ' \
               '--encoder densenet161_bts ' \
               '--dataset kitti ' \
-              '--data_path ../dataset/kitti_dataset/ ' \
-              '--gt_path ../dataset/kitti_dataset/data_depth_annotated/ ' \
-              '--filenames_file ./train_test_inputs/eigen_test_files_with_gt.txt ' \
+              '--data_path ../../dataset/kitti_dataset/ ' \
+              '--gt_path ../../dataset/kitti_dataset/data_depth_annotated/ ' \
+              '--filenames_file ../train_test_inputs/eigen_test_files_with_gt.txt ' \
               '--input_height 352 ' \
               '--input_width 1216 ' \
               '--garg_crop ' \

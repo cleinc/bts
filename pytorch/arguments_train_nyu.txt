@@ -1,0 +1,21 @@
+--mode train
+--model_name bts_nyu_v2_pytorch_test
+--encoder densenet161_bts
+--dataset nyu
+--data_path ../../dataset/nyu_depth_v2/sync/
+--gt_path ../../dataset/nyu_depth_v2/sync/
+--filenames_file ../train_test_inputs/nyudepthv2_train_files_with_gt.txt
+--batch_size 4
+--num_epochs 50
+--learning_rate 1e-4
+--weight_decay 1e-2
+--num_gpus 1
+--num_threads 1
+--input_height 416
+--input_width 544
+--max_depth 10
+--do_random_rotate
+--degree 2.5
+--log_directory ./models/
+--multiprocessing_distributed
+--dist_url tcp://127.0.0.1:2345

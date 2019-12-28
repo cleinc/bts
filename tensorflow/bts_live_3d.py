@@ -83,15 +83,16 @@ image = tf.placeholder(tf.float32, [1, 416, 576, 3])
 global focals
 focals = tf.constant([518.8579])
 
+# Intrinsic parameters for your own webcam camera
 camera_matrix = np.zeros(shape=(3, 3))
 camera_matrix[0, 0] = 5.4765313594010649e+02
 camera_matrix[0, 2] = 3.2516069906172453e+02
 camera_matrix[1, 1] = 5.4801781476172562e+02
 camera_matrix[1, 2] = 2.4794113960783835e+02
 camera_matrix[2, 2] = 1
-
 dist_coeffs = np.array([ 3.7230261423972011e-02, -1.6171708069773008e-01, -3.5260752900266357e-04, 1.7161234226767313e-04, 1.0192711400840315e-01 ])
 
+# Parameters for a model trained on NYU Depth V2
 new_camera_matrix = np.zeros(shape=(3, 3))
 new_camera_matrix[0, 0] = 518.8579
 new_camera_matrix[0, 2] = 320

@@ -28,6 +28,7 @@ import errno
 import matplotlib.pyplot as plt
 import sys
 import tensorflow as tf
+import tqdm
 
 from bts_dataloader import *
 
@@ -107,6 +108,7 @@ def test_sequence(params):
             try:
                 os.mkdir(args.out_path)
                 os.mkdir(args.out_path + '/depth')
+                os.mkdir(args.out_path + '/reduc1x1')
                 os.mkdir(args.out_path + '/lpg2x2')
                 os.mkdir(args.out_path + '/lpg4x4')
                 os.mkdir(args.out_path + '/lpg8x8')
@@ -116,7 +118,7 @@ def test_sequence(params):
                     raise
 
         start_time = time.time()
-        for s in range(num_test_samples):
+        for s in tqdm(range(num_test_samples)):
             input_image = cv2.imread(image_files[s])
 
             if args.dataset == 'kitti':
@@ -135,13 +137,14 @@ def test_sequence(params):
 
             input_images = np.reshape(input_image, (1, args.input_height, args.input_width, 3))
 
-            depth, pred_8x8, pred_4x4, pred_2x2 = sess.run(
-                [model.depth_est, model.depth_8x8, model.depth_4x4, model.depth_2x2], feed_dict={image: input_images})
+            depth, pred_8x8, pred_4x4, pred_2x2, pred_1x1 = sess.run(
+                [model.depth_est, model.lpg8x8, model.lpg4x4, model.lpg2x2, model.reduc1x1], feed_dict={image: input_images})
 
             pred_depth = depth.squeeze()
             pred_8x8 = pred_8x8.squeeze()
             pred_4x4 = pred_4x4.squeeze()
             pred_2x2 = pred_2x2.squeeze()
+            pred_1x1 = pred_1x1.squeeze()
 
             save_path = os.path.join(args.out_path, 'depth', image_files[s].split('/')[-1])
             plt.imsave(save_path, np.log10(pred_depth), cmap='Greys')
@@ -149,6 +152,9 @@ def test_sequence(params):
             save_path = os.path.join(args.out_path, 'rgb', image_files[s].split('/')[-1])
             cv2.imwrite(save_path, input_image_original)
 
+            save_path = os.path.join(args.out_path, 'reduc1x1', image_files[s].split('/')[-1])
+            plt.imsave(save_path, np.log10(pred_1x1), cmap='Greys')
+            
             save_path = os.path.join(args.out_path, 'lpg2x2', image_files[s].split('/')[-1])
             plt.imsave(save_path, np.log10(pred_2x2), cmap='Greys')
 

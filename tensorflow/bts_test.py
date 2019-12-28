@@ -25,7 +25,7 @@ import errno
 import matplotlib.pyplot as plt
 import cv2
 import sys
-from tqdm import tqdm
+import tqdm
 
 from bts_dataloader import *
 
