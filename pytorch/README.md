@@ -13,7 +13,7 @@ First make sure that you have prepared the test set using instructions in README
 $ cd ~/workspace/bts/pytorch
 $ mkdir models
 ### Get BTS model trained with NYU Depth V2
-$ python ../utils/download_from_gdrive.py 1goRL8aZw8bwZ8cZmne_cJTBnBOT6ii0S models/bts_nyu_v2_pytorch.zip
+$ python ../utils/download_from_gdrive.py 1w8d7Jq6fRSr8g8j-xy55gDEHjxMNP-1x models/bts_nyu_v2_pytorch.zip
 $ cd models
 $ unzip bts_nyu_v2_pytorch.zip
 ```
@@ -22,7 +22,7 @@ Once the preparation steps completed, you can test BTS using following commands.
 $ cd ~/workspace/bts/pytorch
 $ python bts_test.py arguments_test_nyu.txt
 ```
-This will save results to ./result_bts_nyu_v2_pytorch. With a single RTX 2080 Ti it takes about 34 seconds for processing 654 testing images. 
+This will save results to ./result_bts_nyu_v2_pytorch. With a single RTX 2080 Ti it takes about 41 seconds for processing 654 testing images. 
 
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
@@ -39,7 +39,7 @@ GT files reading done
 0 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.886,   0.981,   0.995,   0.110,   0.059,   0.350,   0.138,  11.076,   0.046
+  0.888,   0.981,   0.996,   0.108,   0.056,   0.351,   0.138,  11.080,   0.046
 Done.
 ```
 
@@ -84,12 +84,12 @@ Once you have KITTI dataset and official ground truth depthmaps, you can test an
 ```
 # Get KITTI model trained with KITTI Eigen split
 $ cd ~/workspace/bts
-$ python utils/download_from_gdrive.py 1nhukEgl3YdTBKVzcjxUp6ZFMsKKM3xfg pytorch/models/bts_eigen_v2_pytorch.zip
+$ python utils/download_from_gdrive.py 1iod9ohaJ9C2pmzsXqVrfwLLMlDSCvwBW pytorch/models/bts_eigen_v2_pytorch.zip
 $ cd pytorch/models && unzip bts_eigen_v2_pytorch.zip
 ```
 Test and save results.
 ```
-$ cd ~/workspace/bts
+$ cd ~/workspace/bts/pytorch
 $ python bts_test.py arguments_test_eigen.txt
 ```
 This will save results to ./result_bts_eigen_v2_pytorch.
@@ -104,11 +104,11 @@ GT files reading done
 45 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.952,   0.993,   0.998,   0.063,   0.257,   2.791,   0.099,   9.168,   0.028
+  0.952,   0.992,   0.998,   0.063,   0.264,   2.892,   0.100,   9.186,   0.028
 Done.
 ```
 
-Also, in this pytorch implementation, you can use another base networks as our encoder with pretrained weights.\
+Also, in this pytorch implementation, you can use various base networks with pretrained weights as the encoder for bts.\
 Available options are: resnet50_bts, resnet101_bts, densenet121_bts and densenet161_bts\
 Simply change the argument '--encoder' in arguments_train_*.txt with your choice.
 

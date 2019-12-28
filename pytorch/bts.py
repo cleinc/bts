@@ -309,8 +309,6 @@ class encoder(nn.Module):
             feature = v(features[-1])
             features.append(feature)
             if any(x in k for x in self.feat_names):
-                # if k is 'norm5':
-                #     feature = torch.nn.ReLU()(feature)
                 skip_feat.append(feature)
                 
         return skip_feat

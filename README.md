@@ -28,7 +28,7 @@ $ wget http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled
 ### Convert mat file to image files
 $ python extract_official_train_test_set_from_mat.py nyu_depth_v2_labeled.mat splits.mat ../../dataset/nyu_depth_v2/official_splits/
 ```
-### Prepare [KITTI](http://www.cvlibs.net/download.php?file=data_depth_annotated.zip) official ground truth depth maps
+## Prepare [KITTI](http://www.cvlibs.net/download.php?file=data_depth_annotated.zip) official ground truth depth maps
 Download the ground truth depthmaps from this link [KITTI](http://www.cvlibs.net/download.php?file=data_depth_annotated.zip).\
 Then,
 ```
@@ -38,12 +38,12 @@ $ mv ~/Downloads/data_depth_annotated.zip .
 $ unzip data_depth_annotated.zip
 ```
 
-Follow instructions in one of below implementations.
+Follow instructions from one of the below implementations with your choice.
 
 ## TensorFlow Implementation
-[[./tensorflow/README.md]](./tensorflow/README.md)
+[[./tensorflow/]](./tensorflow/)
 ## PyTorch Implementation
-[[./pytorch/README.md]](./pytorch/README.md)
+[[./pytorch/]](./pytorch/)
 
 
 ## Citation
