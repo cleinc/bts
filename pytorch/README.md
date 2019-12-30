@@ -104,7 +104,7 @@ GT files reading done
 45 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.952,   0.992,   0.998,   0.063,   0.264,   2.892,   0.100,   9.186,   0.028
+  0.955,   0.993,   0.998,   0.060,   0.249,   2.798,   0.096,   8.933,   0.027
 Done.
 ```
 
