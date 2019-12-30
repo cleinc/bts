@@ -138,7 +138,7 @@ def train(params):
         end_learning_rate = args.end_learning_rate if args.end_learning_rate != -1 else start_learning_rate * 0.1
         learning_rate = tf.train.polynomial_decay(start_learning_rate, global_step, num_total_steps, end_learning_rate, 0.9)
 
-        opt_step = tf.train.AdamOptimizer(learning_rate, epsilon=1e-3)
+        opt_step = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
 
         print("Total number of samples: {}".format(num_training_samples))
         print("Total number of steps: {}".format(num_total_steps))
