@@ -73,7 +73,7 @@ parser.add_argument('--fix_first_conv_block',                  help='if set, wil
 parser.add_argument('--bn_no_track_stats',                     help='if set, will not track running stats in batch norm layers', action='store_true')
 parser.add_argument('--weight_decay',              type=float, help='weight decay factor for optimization', default=1e-2)
 parser.add_argument('--bts_size',                  type=int,   help='initial num_filters in bts', default=512)
-parser.add_argument('--use_right',                             help='if set, will also use right images', action='store_true')
+parser.add_argument('--use_right',                             help='if set, will randomly use right images when train on KITTI', action='store_true')
 
 parser.add_argument('--world_size',                type=int,   help='number of nodes for distributed training', default=1)
 parser.add_argument('--rank',                      type=int,   help='node rank for distributed training', default=0)
