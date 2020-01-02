@@ -153,7 +153,7 @@ def test(params):
     
     model = BtsModel(params=params)
     model = torch.nn.DataParallel(model)
-
+    
     cudnn.benchmark = True
     
     if write_summary:
@@ -161,7 +161,7 @@ def test(params):
     
     for step in steps:
         if os.path.isdir(args.checkpoint_path):
-            checkpoint = torch.load(os.path.join(args.checkpoint_path, 'model-' + str(int(step))))
+            checkpoint = torch.load(os.path.join(args.checkpoint_path,'model-' + str(int(step))))
             model.load_state_dict(checkpoint['model'])
         else:
             checkpoint = torch.load(args.checkpoint_path)
@@ -278,13 +278,17 @@ def eval(pred_depths, step):
             eval_mask = np.zeros(valid_mask.shape)
             
             if args.garg_crop:
-                eval_mask[int(0.40810811 * gt_height):int(0.99189189 * gt_height), int(0.03594771 * gt_width):int(0.96405229 * gt_width)] = 1
-
+                eval_mask[int(0.40810811 * gt_height):int(0.99189189 * gt_height),
+                int(0.03594771 * gt_width):int(0.96405229 * gt_width)] = 1
+            
             elif args.eigen_crop:
-                if args.dataset == 'kitti':
-                    eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height), int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
-                else:
-                    eval_mask[45:471, 41:601] = 1
+                eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height),
+                int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
+                # if args.dataset == 'kitti':
+                #     eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height),
+                #     int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
+                # else:
+                #     eval_mask[45:471, 41:601] = 1
             
             valid_mask = np.logical_and(valid_mask, eval_mask)
         
@@ -301,15 +305,4 @@ def eval(pred_depths, step):
 
 
 if __name__ == '__main__':
-    params = bts_parameters(
-        encoder=args.encoder,
-        height=args.input_height,
-        width=args.input_width,
-        batch_size=None,
-        dataset=args.dataset,
-        max_depth=args.max_depth,
-        num_gpus=None,
-        num_threads=None,
-        num_epochs=None)
-    
-    test(params)
+    test(args)

@@ -25,9 +25,7 @@ import sys
 
 import torch
 import torch.nn as nn
-import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
-
 from bts_dataloader import *
 
 import errno
@@ -59,6 +57,7 @@ parser.add_argument('--checkpoint_path', type=str, help='path to a specific chec
 parser.add_argument('--dataset', type=str, help='dataset to train on, make3d or nyudepthv2', default='nyu')
 parser.add_argument('--do_kb_crop', help='if set, crop input images as kitti benchmark images', action='store_true')
 parser.add_argument('--save_lpg', help='if set, save outputs from lpg layers', action='store_true')
+parser.add_argument('--bts_size', type=int,   help='initial num_filters in bts', default=512)
 
 if sys.argv.__len__() == 2:
     arg_filename_with_prefix = '@' + sys.argv[1]
@@ -87,7 +86,7 @@ def test(params):
     args.mode = 'test'
     dataloader = BtsDataLoader(args)
     
-    model = BtsModel(params=params)
+    model = BtsModel(params=args)
     model = torch.nn.DataParallel(model)
     
     checkpoint = torch.load(args.checkpoint_path)
@@ -95,24 +94,21 @@ def test(params):
     model.eval()
     model.cuda()
 
-    # cudnn.benchmark = True
-    
     num_test_samples = get_num_lines(args.filenames_file)
-    
+
     with open(args.filenames_file) as f:
         lines = f.readlines()
-    
+
     print('now testing {} files with {}'.format(num_test_samples, args.checkpoint_path))
-    
+
     pred_depths = []
     pred_8x8s = []
     pred_4x4s = []
     pred_2x2s = []
-    pred_1x1s = []
-    
+
     start_time = time.time()
     with torch.no_grad():
-        for _, sample in enumerate(tqdm(dataloader.data)):
+        for _, sample in enumerate(dataloader.data):
             image = Variable(sample['image'].cuda())
             focal = Variable(sample['focal'].cuda())
             # Predict
@@ -121,8 +117,7 @@ def test(params):
             pred_8x8s.append(lpg8x8[0].cpu().numpy().squeeze())
             pred_4x4s.append(lpg4x4[0].cpu().numpy().squeeze())
             pred_2x2s.append(lpg2x2[0].cpu().numpy().squeeze())
-            pred_1x1s.append(reduc1x1[0].cpu().numpy().squeeze())
-    
+
     elapsed_time = time.time() - start_time
     print('Elapesed time: %s' % str(elapsed_time))
     print('Done.')
@@ -174,7 +169,6 @@ def test(params):
         pred_8x8 = pred_8x8s[s]
         pred_4x4 = pred_4x4s[s]
         pred_2x2 = pred_2x2s[s]
-        pred_1x1 = pred_1x1s[s]
         
         if args.dataset == 'kitti' or args.dataset == 'kitti_benchmark':
             pred_depth_scaled = pred_depth * 256.0
@@ -199,9 +193,6 @@ def test(params):
                 pred_2x2_cropped = pred_2x2[10:-1 - 9, 10:-1 - 9]
                 filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_2x2.png')
                 plt.imsave(filename_lpg_cmap_png, np.log10(pred_2x2_cropped), cmap='Greys')
-                pred_1x1_cropped = pred_1x1[10:-1 - 9, 10:-1 - 9]
-                filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_1x1.png')
-                plt.imsave(filename_lpg_cmap_png, np.log10(pred_1x1_cropped), cmap='Greys')
             else:
                 plt.imsave(filename_cmap_png, np.log10(pred_depth), cmap='Greys')
                 filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_8x8.png')
@@ -210,21 +201,9 @@ def test(params):
                 plt.imsave(filename_lpg_cmap_png, np.log10(pred_4x4), cmap='Greys')
                 filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_2x2.png')
                 plt.imsave(filename_lpg_cmap_png, np.log10(pred_2x2), cmap='Greys')
-                filename_lpg_cmap_png = filename_cmap_png.replace('.png', '_1x1.png')
-                plt.imsave(filename_lpg_cmap_png, np.log10(pred_1x1), cmap='Greys')
+    
     return
 
 
 if __name__ == '__main__':
-    params = bts_parameters(
-        encoder=args.encoder,
-        height=args.input_height,
-        width=args.input_width,
-        batch_size=None,
-        dataset=args.dataset,
-        max_depth=args.max_depth,
-        num_gpus=None,
-        num_threads=None,
-        num_epochs=None)
-    
-    test(params)
+    test(args)

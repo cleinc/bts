@@ -72,6 +72,8 @@ parser.add_argument('--fix_first_conv_blocks',                 help='if set, wil
 parser.add_argument('--fix_first_conv_block',                  help='if set, will fix the first conv block', action='store_true')
 parser.add_argument('--bn_no_track_stats',                     help='if set, will not track running stats in batch norm layers', action='store_true')
 parser.add_argument('--weight_decay',              type=float, help='weight decay factor for optimization', default=1e-2)
+parser.add_argument('--bts_size',                  type=int,   help='initial num_filters in bts', default=512)
+parser.add_argument('--use_right',                             help='if set, will also use right images', action='store_true')
 
 parser.add_argument('--world_size',                type=int,   help='number of nodes for distributed training', default=1)
 parser.add_argument('--rank',                      type=int,   help='node rank for distributed training', default=0)
@@ -116,6 +118,26 @@ def get_num_lines(file_path):
     return len(lines)
 
 
+def colorize(value, vmin=None, vmax=None, cmap='Greys'):
+    value = value.cpu().numpy()[:, :, :]
+    value = np.log10(value)
+    
+    vmin = value.min() if vmin is None else vmin
+    vmax = value.max() if vmax is None else vmax
+    
+    if vmin != vmax:
+        value = (value - vmin) / (vmax - vmin)
+    else:
+        value = value*0.
+
+    cmapper = matplotlib.cm.get_cmap(cmap)
+    value = cmapper(value, bytes=True)
+
+    img = value[:, :, :3]
+
+    return img.transpose((2, 0, 1))
+
+
 def normalize_result(value, vmin=None, vmax=None):
     value = value.cpu().numpy()[0, :, :]
     
@@ -132,17 +154,6 @@ def normalize_result(value, vmin=None, vmax=None):
 
 # def main(params):
 def main_worker(gpu, ngpus_per_node, args):
-    params = bts_parameters(
-        encoder=args.encoder,
-        height=args.input_height,
-        width=args.input_width,
-        batch_size=args.batch_size,
-        dataset=args.dataset,
-        max_depth=args.max_depth,
-        num_gpus=args.num_gpus,
-        num_threads=args.num_threads,
-        num_epochs=args.num_epochs)
-    
     args.gpu = gpu
     
     if args.gpu is not None:
@@ -156,7 +167,7 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=args.rank)
     
     # Create model
-    model = BtsModel(params=params)
+    model = BtsModel(args)
     model.train()
     model.decoder.apply(weights_init_xavier)
     if args.bn_no_track_stats:
@@ -192,10 +203,11 @@ def main_worker(gpu, ngpus_per_node, args):
             torch.cuda.set_device(args.gpu)
             model.cuda(args.gpu)
             args.batch_size = int(args.batch_size / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+            args.num_threads = int((args.num_threads + ngpus_per_node - 1) / ngpus_per_node)
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
         else:
             model.cuda()
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
     else:
         model = torch.nn.DataParallel(model)
         model.cuda()
@@ -209,23 +221,23 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Training parameters
     optimizer = torch.optim.AdamW([{'params': model.module.encoder.parameters(), 'weight_decay': args.weight_decay},
-                                   {'params': model.module.decoder.parameters(), 'weight_decay': 0}], lr=args.learning_rate, eps=1e-3)
+                                   {'params': model.module.decoder.parameters(), 'weight_decay': 0}], lr=args.learning_rate, eps=1e-6)
     # optimizer = torch.optim.AdamW(model.parameters(), weight_decay=1e-4, lr=args.learning_rate, eps=1e-3)
     
     if args.checkpoint_path != '':
         if os.path.isfile(args.checkpoint_path):
-            print("Loading checkpoint '{}'".format(args.resume))
+            print("Loading checkpoint '{}'".format(args.checkpoint_path))
             if args.gpu is None:
-                checkpoint = torch.load(args.resume)
+                checkpoint = torch.load(args.checkpoint_path)
             else:
                 loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
+                checkpoint = torch.load(args.checkpoint_path, map_location=loc)
             global_step = checkpoint['global_step']
             model.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("Loaded checkpoint '{}' (global_step {})".format(args.checkpoint_path, checkpoint['global_step']))
         else:
-            print("No checkpoint found at '{}'".format(args.resume))
+            print("No checkpoint found at '{}'".format(args.checkpoint_path))
     
     if args.retrain:
         global_step = 0
@@ -235,8 +247,7 @@ def main_worker(gpu, ngpus_per_node, args):
     dataloader = BtsDataLoader(args)
     
     # Logging
-    if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                                                and args.rank % ngpus_per_node == 0):
+    if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
         writer = SummaryWriter(args.log_directory + '/' + args.model_name + '/summaries', flush_secs=30)
     
     silog_criterion = silog_loss()
@@ -332,17 +343,6 @@ def main_worker(gpu, ngpus_per_node, args):
         epoch += 1
 
 if __name__ == '__main__':
-    params = bts_parameters(
-        encoder=args.encoder,
-        height=args.input_height,
-        width=args.input_width,
-        batch_size=args.batch_size,
-        dataset=args.dataset,
-        max_depth=args.max_depth,
-        num_gpus=args.num_gpus,
-        num_threads=args.num_threads,
-        num_epochs=args.num_epochs)
-
     model_filename = args.model_name + '.py'
     command = 'mkdir ' + args.log_directory + '/' + args.model_name
     os.system(command)

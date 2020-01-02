@@ -69,11 +69,15 @@ class DataLoadPreprocess(Dataset):
     
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
-        focal = float(sample_path.split()[-1])
+        focal = float(sample_path.split()[2])
 
         if self.mode == 'train':
-            image_path = os.path.join(self.args.data_path, "./" + sample_path.split()[0])
-            depth_path = os.path.join(self.args.gt_path, "./" + sample_path.split()[1])
+            if self.args.dataset == 'kitti' and self.args.use_right is True and random.random() > 0.5:
+                image_path = os.path.join(self.args.data_path, "./" + sample_path.split()[3])
+                depth_path = os.path.join(self.args.gt_path, "./" + sample_path.split()[4])
+            else:
+                image_path = os.path.join(self.args.data_path, "./" + sample_path.split()[0])
+                depth_path = os.path.join(self.args.gt_path, "./" + sample_path.split()[1])
     
             image = Image.open(image_path)
             depth_gt = Image.open(depth_path)
