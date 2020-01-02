@@ -1,6 +1,6 @@
 --mode train
 --model_name bts_nyu_v2_pytorch_test
---encoder densenet161_bts
+--encoder densenet121_bts
 --dataset nyu
 --data_path ../../dataset/nyu_depth_v2/sync/
 --gt_path ../../dataset/nyu_depth_v2/sync/

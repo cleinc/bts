@@ -13,9 +13,9 @@ First make sure that you have prepared the test set using instructions in README
 $ cd ~/workspace/bts/pytorch
 $ mkdir models
 ### Get BTS model trained with NYU Depth V2
-$ python ../utils/download_from_gdrive.py 1w8d7Jq6fRSr8g8j-xy55gDEHjxMNP-1x models/bts_nyu_v2_pytorch.zip
 $ cd models
-$ unzip bts_nyu_v2_pytorch.zip
+$ wget https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_nyu_v2_pytorch_densenet161.zip
+$ unzip bts_nyu_v2_pytorch_densenet161.zip
 ```
 Once the preparation steps completed, you can test BTS using following commands.
 ```
@@ -27,8 +27,8 @@ This will save results to ./result_bts_nyu_v2_pytorch. With a single RTX 2080 Ti
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
 ```
-$ cd ~/workspace/bts
-$ python utils/eval_with_pngs.py --pred_path pytorch/result_bts_nyu_v2_pytorch/raw/ --gt_path ../dataset/nyu_depth_v2/official_splits/test/ --dataset nyu --min_depth_eval 1e-3 --max_depth_eval 10 --eigen_crop
+$ cd ~/workspace/bts/pytorch
+$ python ../utils/eval_with_pngs.py --pred_path result_bts_nyu_v2_pytorch_densenet161/raw/ --gt_path ../../dataset/nyu_depth_v2/official_splits/test/ --dataset nyu --min_depth_eval 1e-3 --max_depth_eval 10 --eigen_crop
 ```
 
 You should see outputs like this:
@@ -39,7 +39,7 @@ GT files reading done
 0 GT files missing
 Computing errors
      d1,      d2,      d3,  AbsRel,   SqRel,    RMSE, RMSElog,   SILog,   log10
-  0.883,   0.980,   0.996,   0.110,   0.064,   0.394,   0.142,  11.559,   0.047
+  0.885,   0.978,   0.994,   0.110,   0.066,   0.392,   0.142,  11.533,   0.047
 Done.
 ```
 
@@ -82,10 +82,10 @@ $ python bts_main.py arguments_train_eigen.txt
 ## Testing and Evaluation with [KITTI](http://www.cvlibs.net/datasets/kitti/eval_depth.php?benchmark=depth_prediction)
 Once you have KITTI dataset and official ground truth depthmaps, you can test and evaluate our model with following commands.
 ```
-# Get KITTI model trained with KITTI Eigen split
-$ cd ~/workspace/bts
-$ python utils/download_from_gdrive.py 1iod9ohaJ9C2pmzsXqVrfwLLMlDSCvwBW pytorch/models/bts_eigen_v2_pytorch.zip
-$ cd pytorch/models && unzip bts_eigen_v2_pytorch.zip
+### Get model trained with KITTI Eigen split
+$ cd ~/workspace/bts/pytorch/models
+$ wget https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet161.zip
+$ cd unzip bts_eigen_v2_pytorch_densenet161.zip
 ```
 Test and save results.
 ```
@@ -95,8 +95,8 @@ $ python bts_test.py arguments_test_eigen.txt
 This will save results to ./result_bts_eigen_v2_pytorch.
 Finally, we can evaluate the prediction results with
 ```
-$ cd ~/workspace/bts
-$ python utils/eval_with_pngs.py --pred_path pytorch/result_bts_eigen_v2_pytorch/raw/ --gt_path ../dataset/kitti_dataset/data_depth_annotated/ --dataset kitti --min_depth_eval 1e-3 --max_depth_eval 80 --do_kb_crop --garg_crop
+$ cd ~/workspace/bts/pytorch
+$ python ../utils/eval_with_pngs.py --pred_path result_bts_eigen_v2_pytorch_densenet161/raw/ --gt_path ../../dataset/kitti_dataset/data_depth_annotated/ --dataset kitti --min_depth_eval 1e-3 --max_depth_eval 80 --do_kb_crop --garg_crop
 ```
 You should see outputs like this:
 ```
@@ -122,6 +122,18 @@ Simply change the argument '--encoder' in arguments_train_*.txt with your choice
 | DenseNet121  | 0.951 | 0.993 | 0.998 |  0.063 | 0.256 | 2.850 |   0.100 | 9.221 | 0.028 |   21.2M | [bts_eigen_v2_pytorch_densenet121](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet121.zip) |
 | DenseNet161  | 0.955 | 0.993 | 0.998 |  0.060 | 0.249 | 2.798 |   0.096 | 8.933 | 0.027 |   47.0M | [bts_eigen_v2_pytorch_densenet161](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet161.zip) |
 | ResNext101   | 0.956 | 0.993 | 0.998 |  0.059 | 0.241 | 2.756 |   0.096 | 8.781 | 0.026 |  112.8M | [bts_eigen_v2_pytorch_resnext101](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_resnext101.zip)  |
+
+### NYU Depth V2
+
+| Base Network |   d1  |   d2  |   d3  | AbsRel | SqRel |  RMSE | RMSElog |  SILog | log10 | #Params |         Model Download         |
+|:------------:|:-----:|:-----:|:-----:|:------:|:-----:|:-----:|:-------:|:------:|:-----:|:-------:|:------------------------------:|
+| ResNet50     | 0.865 | 0.975 | 0.993 |  0.119 | 0.075 | 0.419 |   0.152 | 12.368 | 0.051 |   49.5M | [bts_nyu_v2_pytorch_resnet50](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_nyu_v2_pytorch_resnet50.zip) |
+| ResNet101    | 0.871 | 0.977 | 0.995 |  0.113 | 0.068 | 0.407 |   0.148 | 11.886 | 0.049 |   68.5M | [bts_nyu_v2_pytorch_resnet101](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_resnet101.zip) |
+| DenseNet121  | 0.871 | 0.977 | 0.993 |  0.118 | 0.072 | 0.410 |   0.149 | 12.028 | 0.050 |   21.2M | [bts_nyu_v2_pytorch_densenet121](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet121.zip) |
+| DenseNet161  | 0.885 | 0.978 | 0.994 |  0.110 | 0.066 | 0.392 |   0.142 | 11.533 | 0.047 |   47.0M | [bts_nyu_v2_pytorch_densenet161](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet161.zip) |
+| ResNext101   | 0.880 | 0.977 | 0.994 |  0.111 | 0.069 | 0.399 |   0.145 | 11.680 | 0.048 |  112.8M | [bts_nyu_v2_pytorch_resnext101](https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_resnext101.zip)  |
+
+Note: Modify arguments '--encoder', '--model_name', '--checkpoint_path' and '--pred_path' accordingly.
 
 ## License
 Copyright (C) 2019 Jin Han Lee, Myung-Kyu Han, Dong Wook Ko and Il Hong Suh \
