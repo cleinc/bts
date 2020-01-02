@@ -22,7 +22,7 @@ Once the preparation steps completed, you can test BTS using following commands.
 $ cd ~/workspace/bts/pytorch
 $ python bts_test.py arguments_test_nyu.txt
 ```
-This will save results to ./result_bts_nyu_v2_pytorch. With a single RTX 2080 Ti it takes about 41 seconds for processing 654 testing images. 
+This will save results to ./result_bts_nyu_v2_pytorch_densenet161. With a single RTX 2080 Ti it takes about 41 seconds for processing 654 testing images. 
 
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
@@ -92,7 +92,7 @@ Test and save results.
 $ cd ~/workspace/bts/pytorch
 $ python bts_test.py arguments_test_eigen.txt
 ```
-This will save results to ./result_bts_eigen_v2_pytorch.
+This will save results to ./result_bts_eigen_v2_pytorch_densenet161.
 Finally, we can evaluate the prediction results with
 ```
 $ cd ~/workspace/bts/pytorch
