@@ -22,16 +22,6 @@ import math
 from collections import namedtuple
 
 
-bts_parameters = namedtuple('parameters', 'encoder, '
-                                          'height, width, '
-                                          'max_depth, '
-                                          'batch_size, '
-                                          'dataset, '
-                                          'num_gpus, '
-                                          'num_threads, '
-                                          'num_epochs, ')
-
-
 # This sets the batch norm layers in pytorch as if {'is_training': False, 'scale': True} in tensorflow
 def bn_init_as_tf(m):
     if isinstance(m, nn.BatchNorm2d):
