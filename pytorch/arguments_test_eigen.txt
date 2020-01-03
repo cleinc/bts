@@ -1,9 +1,9 @@
---encoder densenet161_bts
+--encoder resnext50_bts
 --data_path ../../dataset/kitti_dataset/
 --dataset kitti
 --filenames_file ../train_test_inputs/eigen_test_files_with_gt.txt
---model_name bts_eigen_v2_pytorch_densenet161
---checkpoint_path ./models/bts_eigen_v2_pytorch_densenet161/model
+--model_name bts_eigen_v2_pytorch_resnext50
+--checkpoint_path ./models/bts_eigen_v2_pytorch_resnext50/model
 --input_height 352
 --input_width 1216
 --max_depth 80
