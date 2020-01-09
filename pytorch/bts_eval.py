@@ -61,6 +61,7 @@ parser.add_argument('--garg_crop', help='if set, crops according to Garg  ECCV16
 parser.add_argument('--min_depth_eval', type=float, help='minimum depth for evaluation', default=1e-3)
 parser.add_argument('--max_depth_eval', type=float, help='maximum depth for evaluation', default=80)
 parser.add_argument('--do_kb_crop', help='if set, crop input images as kitti benchmark images', action='store_true')
+parser.add_argument('--bts_size', type=int,   help='initial num_filters in bts', default=512)
 
 if sys.argv.__len__() == 2:
     arg_filename_with_prefix = '@' + sys.argv[1]

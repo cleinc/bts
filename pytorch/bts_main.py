@@ -48,7 +48,8 @@ parser.convert_arg_line_to_args = convert_arg_line_to_args
 
 parser.add_argument('--mode',                      type=str,   help='train or test', default='train')
 parser.add_argument('--model_name',                type=str,   help='model name', default='bts_eigen_v2')
-parser.add_argument('--encoder',                   type=str,   help='type of encoder, desenet121_bts, densenet161_bts, resnet101_bts or resnet50_bts', default='densenet161_bts')
+parser.add_argument('--encoder',                   type=str,   help='type of encoder, desenet121_bts, densenet161_bts, '
+                                                                    'resnet101_bts, resnet50_bts, resnext50_bts or resnext101_bts', default='densenet161_bts')
 parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti or nyu', default='nyu')
 parser.add_argument('--data_path',                 type=str,   help='path to the data', required=False)
 parser.add_argument('--gt_path',                   type=str,   help='path to the groundtruth data', required=False)
@@ -59,6 +60,7 @@ parser.add_argument('--batch_size',                type=int,   help='batch size'
 parser.add_argument('--num_epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--end_learning_rate',         type=float, help='end learning rate', default=-1)
+parser.add_argument('--variance_focus',            type=float, help='lambda in paper: [0, 1], higher value more focus on minimizing variance of error', default=0.85)
 parser.add_argument('--max_depth',                 type=float, help='maximum depth in estimation', default=10)
 parser.add_argument('--do_random_rotate',                      help='if set, will perform random rotation for augmentation', action='store_true')
 parser.add_argument('--degree',                    type=float, help='random rotation maximum degree', default=2.5)
@@ -152,7 +154,6 @@ def normalize_result(value, vmin=None, vmax=None):
     return np.expand_dims(value, 0)
 
 
-# def main(params):
 def main_worker(gpu, ngpus_per_node, args):
     args.gpu = gpu
     
@@ -175,13 +176,22 @@ def main_worker(gpu, ngpus_per_node, args):
         model.apply(bn_init_as_tf)
 
     if args.fix_first_conv_blocks:
-        fixing_layers = ['conv0', 'denseblock1.denselayer1', 'denseblock1.denselayer2', 'norm']
+        if 'resne' in args.encoder:
+            fixing_layers = ['base_model.conv1', 'base_model.layer1.0', 'base_model.layer1.1', '.bn']
+        else:
+            fixing_layers = ['conv0', 'denseblock1.denselayer1', 'denseblock1.denselayer2', 'norm']
         print("Fixing first two conv blocks")
     elif args.fix_first_conv_block:
-        fixing_layers = ['conv0', 'denseblock1.denselayer1', 'norm']
+        if 'resne' in args.encoder:
+            fixing_layers = ['base_model.conv1', 'base_model.layer1.0', '.bn']
+        else:
+            fixing_layers = ['conv0', 'denseblock1.denselayer1', 'norm']
         print("Fixing first conv block")
     else:
-        fixing_layers = ['conv0', 'norm']
+        if 'resne' in args.encoder:
+            fixing_layers = ['base_model.conv1', '.bn']
+        else:
+            fixing_layers = ['conv0', 'norm']
         print("Fixing first conv layer")
         
     for name, child in model.named_children():
@@ -221,7 +231,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # Training parameters
     optimizer = torch.optim.AdamW([{'params': model.module.encoder.parameters(), 'weight_decay': args.weight_decay},
                                    {'params': model.module.decoder.parameters(), 'weight_decay': 0}], lr=args.learning_rate, eps=1e-6)
-    # optimizer = torch.optim.AdamW(model.parameters(), weight_decay=1e-4, lr=args.learning_rate, eps=1e-3)
+    # optimizer = torch.optim.AdamW(model.parameters(), weight_decay=args.weight_decay, lr=args.learning_rate, eps=1e-3)
     
     if args.checkpoint_path != '':
         if os.path.isfile(args.checkpoint_path):
@@ -242,21 +252,22 @@ def main_worker(gpu, ngpus_per_node, args):
         global_step = 0
     
     cudnn.benchmark = True
-        
+    
     dataloader = BtsDataLoader(args)
     
     # Logging
     if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
         writer = SummaryWriter(args.log_directory + '/' + args.model_name + '/summaries', flush_secs=30)
     
-    silog_criterion = silog_loss()
+    silog_criterion = silog_loss(variance_focus=args.variance_focus)
 
     start_time = time.time()
     duration = 0
     log_freq = 100
-    
+    save_freq = 500
+
     num_log_images = args.batch_size
-    end_learning_rate = 0.1 * args.learning_rate
+    end_learning_rate = args.end_learning_rate if args.end_learning_rate != -1 else 0.1 * args.learning_rate
 
     var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
     var_cnt = len(var_sum)
@@ -268,7 +279,7 @@ def main_worker(gpu, ngpus_per_node, args):
     num_total_steps = args.num_epochs * steps_per_epoch
     
     epoch = global_step // steps_per_epoch
-    
+
     while epoch < args.num_epochs:
         if args.distributed:
             dataloader.train_sampler.set_epoch(epoch)
@@ -329,9 +340,8 @@ def main_worker(gpu, ngpus_per_node, args):
                         writer.add_image('image/image/{}'.format(i), inv_normalize(image[i, :, :, :]).data, global_step)
                     writer.flush()
             
-            if global_step and global_step % 500 == 0:
-                if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                                                            and args.rank % ngpus_per_node == 0):
+            if global_step and global_step % save_freq == 0:
+                if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
                     checkpoint = {'global_step': global_step,
                                   'model': model.state_dict(),
                                   'optimizer': optimizer.state_dict()}
@@ -341,15 +351,20 @@ def main_worker(gpu, ngpus_per_node, args):
         
         epoch += 1
 
-if __name__ == '__main__':
+
+def main():
+    if args.mode != 'train':
+        print('bts_main.py is only for training. Use bts_test.py instead.')
+        return -1
+    
     model_filename = args.model_name + '.py'
     command = 'mkdir ' + args.log_directory + '/' + args.model_name
     os.system(command)
-
+    
     args_out_path = args.log_directory + '/' + args.model_name + '/' + sys.argv[1]
     command = 'cp ' + sys.argv[1] + ' ' + args_out_path
     os.system(command)
-
+    
     if args.checkpoint_path == '':
         model_out_path = args.log_directory + '/' + args.model_name + '/' + model_filename
         command = 'cp bts.py ' + model_out_path
@@ -363,13 +378,13 @@ if __name__ == '__main__':
         loaded_model_dir = os.path.dirname(args.checkpoint_path)
         loaded_model_name = os.path.basename(loaded_model_dir)
         loaded_model_filename = loaded_model_name + '.py'
-    
+        
         model_out_path = args.log_directory + '/' + args.model_name + '/' + model_filename
         command = 'cp ' + loaded_model_dir + '/' + loaded_model_filename + ' ' + model_out_path
         os.system(command)
-
+    
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
-
+    
     ngpus_per_node = torch.cuda.device_count()
     
     if args.multiprocessing_distributed:
@@ -377,3 +392,7 @@ if __name__ == '__main__':
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
     else:
         main_worker(args.gpu, ngpus_per_node, args)
+    
+
+if __name__ == '__main__':
+    main()

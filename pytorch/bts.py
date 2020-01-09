@@ -39,12 +39,13 @@ def weights_init_xavier(m):
             
 
 class silog_loss(nn.Module):
-    def __init__(self):
+    def __init__(self, variance_focus):
         super(silog_loss, self).__init__()
+        self.variance_focus = variance_focus
 
     def forward(self, depth_est, depth_gt, mask):
         d = torch.log(depth_est[mask]) - torch.log(depth_gt[mask])
-        return torch.sqrt((d ** 2).mean() - 0.85 * (d.mean() ** 2)) * 10.0
+        return torch.sqrt((d ** 2).mean() - self.variance_focus * (d.mean() ** 2)) * 10.0
 
 
 class atrous_conv(nn.Sequential):
@@ -285,10 +286,16 @@ class encoder(nn.Module):
             self.base_model = models.resnet101(pretrained=True)
             self.feat_names = ['relu', 'layer1', 'layer2', 'layer3', 'layer4']
             self.feat_out_channels = [64, 256, 512, 1024, 2048]
+        elif params.encoder == 'resnext50_bts':
+            self.base_model = models.resnext50_32x4d(pretrained=True)
+            self.feat_names = ['relu', 'layer1', 'layer2', 'layer3', 'layer4']
+            self.feat_out_channels = [64, 256, 512, 1024, 2048]
         elif params.encoder == 'resnext101_bts':
             self.base_model = models.resnext101_32x8d(pretrained=True)
             self.feat_names = ['relu', 'layer1', 'layer2', 'layer3', 'layer4']
             self.feat_out_channels = [64, 256, 512, 1024, 2048]
+        else:
+            print('Not supported encoder: {}'.format(params.encoder))
 
     def forward(self, x):
         features = [x]
