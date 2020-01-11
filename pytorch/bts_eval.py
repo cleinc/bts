@@ -39,7 +39,7 @@ def convert_arg_line_to_args(arg_line):
         yield arg
 
 
-parser = argparse.ArgumentParser(description='BTS pyTorch implementation.', fromfile_prefix_chars='@')
+parser = argparse.ArgumentParser(description='BTS PyTorch implementation.', fromfile_prefix_chars='@')
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
 parser.add_argument('--model_name', type=str, help='model name', default='bts_v0_0_1')
@@ -150,7 +150,7 @@ def test(params):
         return
     
     args.mode = 'test'
-    dataloader = BtsDataLoader(args)
+    dataloader = BtsDataLoader(args, 'eval')
     
     model = BtsModel(params=params)
     model = torch.nn.DataParallel(model)
@@ -255,7 +255,6 @@ def eval(pred_depths, step):
     d3 = np.zeros(num_samples, np.float32)
     
     for i in range(num_samples):
-        
         gt_depth = gt_depths[i]
         pred_depth = pred_depths_valid[i]
         

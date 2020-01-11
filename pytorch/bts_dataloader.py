@@ -23,6 +23,8 @@ from PIL import Image
 import os
 import random
 
+from distributed_sampler_no_evenly_divisible import *
+
 
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
@@ -31,16 +33,17 @@ def _is_pil_image(img):
 def _is_numpy_image(img):
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
 
-def preprocessing_transforms(is_test):
+
+def preprocessing_transforms(mode):
     return transforms.Compose([
-        ToTensor(is_test=is_test)
+        ToTensor(mode=mode)
     ])
 
 
 class BtsDataLoader(object):
-    def __init__(self, args):
-        if args.mode == 'train':
-            self.training_samples = DataLoadPreprocess(args, transform=preprocessing_transforms(False))
+    def __init__(self, args, mode):
+        if mode == 'train':
+            self.training_samples = DataLoadPreprocess(args, mode, transform=preprocessing_transforms(mode))
             if args.distributed:
                 self.train_sampler = torch.utils.data.distributed.DistributedSampler(self.training_samples)
             else:
@@ -51,21 +54,42 @@ class BtsDataLoader(object):
                                    num_workers=args.num_threads,
                                    pin_memory=True,
                                    sampler=self.train_sampler)
+
+        elif mode == 'online_eval':
+            self.testing_samples = DataLoadPreprocess(args, mode, transform=preprocessing_transforms(mode))
+            if args.distributed:
+                # self.eval_sampler = torch.utils.data.distributed.DistributedSampler(self.testing_samples, shuffle=False)
+                self.eval_sampler = DistributedSamplerNoEvenlyDivisible(self.testing_samples, shuffle=False)
+            else:
+                self.eval_sampler = None
+            self.data = DataLoader(self.testing_samples, 1,
+                                   shuffle=False,
+                                   num_workers=1,
+                                   pin_memory=True,
+                                   sampler=self.eval_sampler)
         
-        else:
-            self.testing_samples = DataLoadPreprocess(args, transform=preprocessing_transforms(True))
+        elif mode == 'eval':
+            self.testing_samples = DataLoadPreprocess(args, mode, transform=preprocessing_transforms(mode))
             self.data = DataLoader(self.testing_samples, 1, shuffle=False, num_workers=1)
+
+        else:
+            print('mode should be one of \'train, test, online_eval\'. Got {}'.format(mode))
             
             
 class DataLoadPreprocess(Dataset):
-    def __init__(self, args, transform=None):
+    def __init__(self, args, mode, transform=None, is_for_online_eval=False):
         self.args = args
-        with open(args.filenames_file, 'r') as f:
-            self.filenames = f.readlines()
+        if mode == 'online_eval':
+            with open(args.filenames_file_eval, 'r') as f:
+                self.filenames = f.readlines()
+        else:
+            with open(args.filenames_file, 'r') as f:
+                self.filenames = f.readlines()
     
-        self.mode = args.mode
+        self.mode = mode
         self.transform = transform
         self.to_tensor = ToTensor
+        self.is_for_online_eval = is_for_online_eval
     
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
@@ -97,8 +121,8 @@ class DataLoadPreprocess(Dataset):
     
             if self.args.do_random_rotate is True:
                 random_angle = (random.random() - 0.5) * 2 * self.args.degree
-                image = self.rotateImage(image, random_angle)
-                depth_gt = self.rotateImage(depth_gt, random_angle, flag=Image.NEAREST)
+                image = self.rotate_image(image, random_angle)
+                depth_gt = self.rotate_image(depth_gt, random_angle, flag=Image.NEAREST)
             
             image = np.asarray(image, dtype=np.float32) / 255.0
             depth_gt = np.asarray(depth_gt, dtype=np.float32)
@@ -114,8 +138,32 @@ class DataLoadPreprocess(Dataset):
             sample = {'image': image, 'depth': depth_gt, 'focal': focal}
         
         else:
-            image_path = os.path.join(self.args.data_path, "./" + sample_path.split()[0])
+            if self.mode == 'online_eval':
+                data_path = self.args.data_path_eval
+            else:
+                data_path = self.args.data_path
+
+            image_path = os.path.join(data_path, "./" + sample_path.split()[0])
             image = np.asarray(Image.open(image_path), dtype=np.float32) / 255.0
+
+            if self.mode == 'online_eval':
+                gt_path = self.args.gt_path_eval
+                depth_path = os.path.join(gt_path, "./" + sample_path.split()[1])
+                has_valid_depth = False
+                try:
+                    depth_gt = Image.open(depth_path)
+                    has_valid_depth = True
+                except IOError:
+                    depth_gt = False
+                    # print('Missing gt for {}'.format(image_path))
+
+                if has_valid_depth:
+                    depth_gt = np.asarray(depth_gt, dtype=np.float32)
+                    depth_gt = np.expand_dims(depth_gt, axis=2)
+                    if self.args.dataset == 'nyu':
+                        depth_gt = depth_gt / 1000.0
+                    else:
+                        depth_gt = depth_gt / 256.0
 
             if self.args.do_kb_crop is True:
                 height = image.shape[0]
@@ -123,15 +171,20 @@ class DataLoadPreprocess(Dataset):
                 top_margin = int(height - 352)
                 left_margin = int((width - 1216) / 2)
                 image = image[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
+                if self.mode == 'online_eval' and has_valid_depth:
+                    depth_gt = depth_gt[top_margin:top_margin + 352, left_margin:left_margin + 1216, :]
             
-            sample = {'image': image, 'focal': focal}
+            if self.mode == 'online_eval':
+                sample = {'image': image, 'depth': depth_gt, 'focal': focal, 'has_valid_depth': has_valid_depth}
+            else:
+                sample = {'image': image, 'focal': focal}
         
         if self.transform:
             sample = self.transform(sample)
         
         return sample
     
-    def rotateImage(self, image, angle, flag=Image.BILINEAR):
+    def rotate_image(self, image, angle, flag=Image.BILINEAR):
         result = image.rotate(angle, resample=flag)
         return result
 
@@ -186,21 +239,25 @@ class DataLoadPreprocess(Dataset):
 
 
 class ToTensor(object):
-    def __init__(self, is_test=False):
-        self.is_test = is_test
+    def __init__(self, mode):
+        self.mode = mode
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     
     def __call__(self, sample):
         image, focal = sample['image'], sample['focal']
         image = self.to_tensor(image)
         image = self.normalize(image)
-        
-        if not self.is_test:
-            depth = sample['depth']
+
+        if self.mode == 'test':
+            return {'image': image, 'focal': focal}
+
+        depth = sample['depth']
+        if self.mode == 'train':
             depth = self.to_tensor(depth)
             return {'image': image, 'depth': depth, 'focal': focal}
-        
-        return {'image': image, 'focal': focal}
+        else:
+            has_valid_depth = sample['has_valid_depth']
+            return {'image': image, 'depth': depth, 'focal': focal, 'has_valid_depth': has_valid_depth}
     
     def to_tensor(self, pic):
         if not (_is_pil_image(pic) or _is_numpy_image(pic)):
@@ -232,4 +289,3 @@ class ToTensor(object):
             return img.float()
         else:
             return img
-        
