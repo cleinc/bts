@@ -375,6 +375,7 @@ def main_worker(gpu, ngpus_per_node, args):
     #                                {'params': model.module.decoder.parameters(), 'weight_decay': 0}], lr=args.learning_rate, eps=1e-6)
     # optimizer = torch.optim.AdamW(model.parameters(), weight_decay=args.weight_decay, lr=args.learning_rate, eps=1e-3)
 
+    model_just_loaded = False
     if args.checkpoint_path != '':
         if os.path.isfile(args.checkpoint_path):
             print("Loading checkpoint '{}'".format(args.checkpoint_path))
@@ -396,6 +397,7 @@ def main_worker(gpu, ngpus_per_node, args):
             print("Loaded checkpoint '{}' (global_step {})".format(args.checkpoint_path, checkpoint['global_step']))
         else:
             print("No checkpoint found at '{}'".format(args.checkpoint_path))
+        model_just_loaded = True
 
     if args.retrain:
         global_step = 0
@@ -470,7 +472,7 @@ def main_worker(gpu, ngpus_per_node, args):
                     return -1
 
             duration += time.time() - before_op_time
-            if global_step and global_step % args.log_freq == 0:
+            if global_step and global_step % args.log_freq == 0 and not model_just_loaded:
                 var_sum = [var.sum() for var in model.parameters() if var.requires_grad]
                 var_cnt = len(var_sum)
                 var_sum = np.sum(var_sum)
@@ -506,7 +508,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                   'optimizer': optimizer.state_dict()}
                     torch.save(checkpoint, args.log_directory + '/' + args.model_name + '/model-{}'.format(global_step))
 
-            if args.do_online_eval and global_step and global_step % args.eval_freq == 0:
+            if args.do_online_eval and global_step and global_step % args.eval_freq == 0 and not model_just_loaded:
                 time.sleep(0.1)
                 model.eval()
                 eval_measures = online_eval(model, dataloader_eval, gpu, ngpus_per_node)
@@ -547,6 +549,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 set_misc(model)
                 enable_print()
 
+            model_just_loaded = False
             global_step += 1
 
         epoch += 1
@@ -583,6 +586,7 @@ def main():
         command = 'cp ' + loaded_model_dir + '/' + loaded_model_filename + ' ' + model_out_path
         os.system(command)
 
+    torch.cuda.empty_cache()
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
