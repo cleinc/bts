@@ -68,7 +68,7 @@ class BtsDataLoader(object):
                                    pin_memory=True,
                                    sampler=self.eval_sampler)
         
-        elif mode == 'eval':
+        elif mode == 'test':
             self.testing_samples = DataLoadPreprocess(args, mode, transform=preprocessing_transforms(mode))
             self.data = DataLoader(self.testing_samples, 1, shuffle=False, num_workers=1)
 

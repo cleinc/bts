@@ -84,7 +84,7 @@ def get_num_lines(file_path):
 def test(params):
     """Test function."""
     args.mode = 'test'
-    dataloader = BtsDataLoader(args, 'eval')
+    dataloader = BtsDataLoader(args, 'test')
     
     model = BtsModel(params=args)
     model = torch.nn.DataParallel(model)
