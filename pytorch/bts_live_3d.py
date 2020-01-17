@@ -51,6 +51,7 @@ parser.add_argument('--max_depth',       type=float, help='maximum depth in esti
 parser.add_argument('--checkpoint_path', type=str,   help='path to a checkpoint to load', required=True)
 parser.add_argument('--input_height',    type=int,   help='input height', default=480)
 parser.add_argument('--input_width',     type=int,   help='input width',  default=640)
+parser.add_argument('--dataset',         type=str,   help='dataset this model trained on',  default='nyu')
 
 args = parser.parse_args()
 
@@ -93,20 +94,8 @@ R = np.identity(3, dtype=np.float)
 map1, map2 = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, R, new_camera_matrix, (640, 480), cv2.CV_32FC1)
 
 def load_model():
-    params = bts_parameters(
-        encoder=args.encoder,
-        height=args.input_height,
-        width=args.input_width,
-        batch_size=None,
-        dataset=None,
-        max_depth=args.max_depth,
-        num_gpus=None,
-        num_threads=None,
-        num_epochs=None,
-    )
-    
     args.mode = 'test'
-    model = BtsModel(params=params)
+    model = BtsModel(params=args)
     model = torch.nn.DataParallel(model)
 
     checkpoint = torch.load(args.checkpoint_path)
