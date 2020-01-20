@@ -368,12 +368,9 @@ def main_worker(gpu, ngpus_per_node, args):
     best_eval_steps = np.zeros(9, dtype=np.int32)
 
     # Training parameters
-    optimizer = torch.optim.AdamW([{'params': model.module.encoder.parameters(), 'lr': 0.1 * args.weight_decay},
-                                   {'params': model.module.decoder.parameters(), 'lr': args.weight_decay}],
-                                  weight_decay=args.weight_decay, eps=args.adam_eps)
-    # optimizer = torch.optim.AdamW([{'params': model.module.encoder.parameters(), 'weight_decay': args.weight_decay},
-    #                                {'params': model.module.decoder.parameters(), 'weight_decay': 0}], lr=args.learning_rate, eps=1e-6)
-    # optimizer = torch.optim.AdamW(model.parameters(), weight_decay=args.weight_decay, lr=args.learning_rate, eps=1e-3)
+    optimizer = torch.optim.AdamW([{'params': model.module.encoder.parameters(), 'weight_decay': args.weight_decay},
+                                   {'params': model.module.decoder.parameters(), 'weight_decay': 0}],
+                                  lr=args.learning_rate, eps=args.adam_eps)
 
     model_just_loaded = False
     if args.checkpoint_path != '':
@@ -456,12 +453,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
             loss = silog_criterion.forward(depth_est, depth_gt, mask.to(torch.bool))
             loss.backward()
-            current_lr = (args.learning_rate - end_learning_rate) * (1 - global_step / num_total_steps) ** 0.9 + end_learning_rate
-            optimizer.param_groups[0]['lr'] = 0.1 * current_lr
-            optimizer.param_groups[1]['lr'] = current_lr
-            # for param_group in optimizer.param_groups:
-            #     current_lr = (args.learning_rate - end_learning_rate) * (1 - global_step / num_total_steps) ** 0.9 + end_learning_rate
-            #     param_group['lr'] = current_lr
+            for param_group in optimizer.param_groups:
+                current_lr = (args.learning_rate - end_learning_rate) * (1 - global_step / num_total_steps) ** 0.9 + end_learning_rate
+                param_group['lr'] = current_lr
 
             optimizer.step()
 
