@@ -8,7 +8,6 @@
 --batch_size 4
 --num_epochs 50
 --learning_rate 1e-4
---num_gpus 1
 --num_threads 1
 --input_height 352
 --input_width 704

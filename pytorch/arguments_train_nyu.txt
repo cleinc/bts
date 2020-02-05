@@ -9,7 +9,6 @@
 --num_epochs 50
 --learning_rate 1e-4
 --weight_decay 1e-2
---num_gpus 1
 --num_threads 1
 --input_height 416
 --input_width 544
