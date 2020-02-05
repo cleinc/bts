@@ -49,7 +49,7 @@ args = parser.parse_args()
 
 def compute_errors(gt, pred):
     thresh = np.maximum((gt / pred), (pred / gt))
-    d1 = (thresh < 1.25 ).mean()
+    d1 = (thresh < 1.25).mean()
     d2 = (thresh < 1.25 ** 2).mean()
     d3 = (thresh < 1.25 ** 3).mean()
 
