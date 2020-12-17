@@ -94,6 +94,9 @@ def test(params):
     model.eval()
     model.cuda()
 
+    num_params = sum([np.prod(p.size()) for p in model.parameters()])
+    print("Total number of parameters: {}".format(num_params))
+
     num_test_samples = get_num_lines(args.filenames_file)
 
     with open(args.filenames_file) as f:
