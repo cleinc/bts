@@ -163,10 +163,10 @@ def test(params):
                 '.jpg', '.png')
             filename_image_png = save_name + '/rgb/' + scene_name + '_' + lines[s].split()[0].split('/')[1]
         
-        rgb_path = os.path.join(args.data_path, lines[s].split()[0])
+        rgb_path = os.path.join(args.data_path, './' + lines[s].split()[0])
         image = cv2.imread(rgb_path)
         if args.dataset == 'nyu':
-            gt_path = os.path.join(args.data_path, lines[s].split()[1])
+            gt_path = os.path.join(args.data_path, './' + lines[s].split()[1])
             gt = cv2.imread(gt_path, -1).astype(np.float32) / 1000.0  # Visualization purpose only
             gt[gt == 0] = np.amax(gt)
         
