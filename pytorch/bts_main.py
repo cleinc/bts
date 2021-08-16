@@ -547,7 +547,11 @@ def main_worker(gpu, ngpus_per_node, args):
             global_step += 1
 
         epoch += 1
-
+       
+    if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
+        writer.close()
+        if args.do_online_eval:
+            eval_summary_writer.close()
 
 def main():
     if args.mode != 'train':
