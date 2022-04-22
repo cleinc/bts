@@ -106,6 +106,8 @@ $ python utils/download_from_gdrive.py 1AysroWpfISmm-yRFGBgFTrLy6FjQwvwP ../data
 $ unzip sync.zip
 ```
 
+Also, you can download it from following link: https://drive.google.com/file/d/1AysroWpfISmm-yRFGBgFTrLy6FjQwvwP/view?usp=sharing Please make sure to locate the downloaded file to ~/workspace/bts/dataset/nyu_depth_v2/sync.zip
+
 Or, using a MATLAB script, you can prepare the dataset by yourself using original files from official site [NYU Depth V2](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html).
 There are two options for downloading original files: Single file downloading and Segmented-files downloading.
 
