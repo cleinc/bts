@@ -51,6 +51,9 @@ $ cd ~/workspace/bts
 $ python utils/download_from_gdrive.py 1AysroWpfISmm-yRFGBgFTrLy6FjQwvwP ../dataset/nyu_depth_v2/sync.zip
 $ unzip sync.zip
 ```
+Also, you can download it from following link:
+https://drive.google.com/file/d/1AysroWpfISmm-yRFGBgFTrLy6FjQwvwP/view?usp=sharing
+Please make sure to locate the downloaded file to ~/workspace/bts/dataset/nyu_depth_v2/sync.zip
 
 Once the dataset is ready, you can train the network using following command.
 ```
