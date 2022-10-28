@@ -1,6 +1,4 @@
 # BTS
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/from-big-to-small-multi-scale-local-planar/monocular-depth-estimation-on-kitti-eigen)](https://paperswithcode.com/sota/monocular-depth-estimation-on-kitti-eigen?p=from-big-to-small-multi-scale-local-planar) 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/from-big-to-small-multi-scale-local-planar/monocular-depth-estimation-on-nyu-depth-v2)](https://paperswithcode.com/sota/monocular-depth-estimation-on-nyu-depth-v2?p=from-big-to-small-multi-scale-local-planar)
 
 From Big to Small: Multi-Scale Local Planar Guidance for Monocular Depth Estimation   
 [arXiv](https://arxiv.org/abs/1907.10326)  
