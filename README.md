@@ -19,7 +19,7 @@ $ cd workspace
 ### Make a folder for datasets
 $ mkdir dataset
 ### Clone this repo
-$ git clone https://github.com/cogaplex-bts/bts
+$ git clone https://github.com/cleinc/bts
 ```
 ## Prepare [NYU Depth V2](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html) test set
 ```shell
