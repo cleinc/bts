@@ -36,7 +36,9 @@ Then,
 $ cd ~/workspace/dataset
 $ mkdir kitti_dataset && cd kitti_dataset
 $ mv ~/Downloads/data_depth_annotated.zip .
-$ unzip data_depth_annotated.zip
+$ unzip data_depth_annotated.zip -d data_depth_annotated
+$ cd data_depth_annotated
+$ mv train/* . && mv val/* .
 ```
 
 Follow instructions from one of the below implementations with your choice.
