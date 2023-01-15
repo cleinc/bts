@@ -84,7 +84,7 @@ if __name__ == "__main__":
     print("reading", sys.argv[1])
 
     images = h5_file['images']
-    scenes = [u''.join(chr(c) for c in h5_file[obj_ref]) for obj_ref in h5_file['sceneTypes'][0]]
+    scenes = [u''.join(chr(c[0]) for c in np.array(h5_file[obj_ref])) for obj_ref in h5_file['sceneTypes'][0]]
 
     print("processing images")
     for i, image in enumerate(images):
