@@ -88,7 +88,7 @@ Once you have KITTI dataset and official ground truth depthmaps, you can test an
 ### Get model trained with KITTI Eigen split
 $ cd ~/workspace/bts/pytorch/models
 $ wget https://cogaplex-bts.s3.ap-northeast-2.amazonaws.com/bts_eigen_v2_pytorch_densenet161.zip
-$ cd unzip bts_eigen_v2_pytorch_densenet161.zip
+$ unzip bts_eigen_v2_pytorch_densenet161.zip
 ```
 Test and save results.
 ```
