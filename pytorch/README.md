@@ -24,6 +24,14 @@ $ python bts_test.py arguments_test_nyu.txt
 ```
 This will save results to ./result_bts_nyu_v2_pytorch_densenet161. With a single RTX 2080 Ti it takes about 41 seconds for processing 654 testing images. 
 
+**Test multiple images in a folder**
+
+```bash
+$ python bts_sequence.py --image_path <image_folder_path>
+```
+
+It'll save the results to `./result_sequence_bts_nyu_v2_pytorch_densenet161`.
+
 ## Evaluation
 Following command will evaluate the prediction results for NYU Depvh V2.
 ```
